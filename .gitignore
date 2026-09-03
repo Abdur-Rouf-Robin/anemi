@@ -1,0 +1,15 @@
+node_modules
+dist
+.next
+.next-prod
+.env
+.env.local
+*.tsbuildinfo
+*.log
+.DS_Store
+coverage
+.prisma
+backend/prisma/migrations/**/migration_lock.toml
+uploads
+data/media
+data/backups

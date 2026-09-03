@@ -1,0 +1,6 @@
+# Point this at your public hostname. Next.js on :3100 already proxies /api, /media, and /socket.io to the API.
+
+anemi.example.com {
+	encode gzip
+	reverse_proxy 127.0.0.1:3100
+}

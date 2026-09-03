@@ -1,0 +1,35 @@
+{
+  "name": "anemi",
+  "private": true,
+  "workspaces": [
+    "frontend",
+    "backend"
+  ],
+  "scripts": {
+    "dev": "npm run dev:backend & npm run dev:frontend",
+    "dev:backend": "npm run dev -w anemi-backend",
+    "dev:frontend": "npm run dev -w anemi-frontend",
+    "build": "npm run build -w anemi-backend && npm run build -w anemi-frontend",
+    "lint": "npm run lint -w anemi-backend && npm run lint -w anemi-frontend",
+    "format": "prettier --write \"**/*.{ts,tsx,js,mjs,json,md,yml}\"",
+    "db:up": "bash scripts/db-up.sh",
+    "db:generate": "npm run db:generate -w anemi-backend",
+    "db:migrate": "npm run db:migrate -w anemi-backend",
+    "db:seed": "npm run db:seed -w anemi-backend",
+    "start:backend": "npm run start -w anemi-backend",
+    "start:frontend": "npm run start -w anemi-frontend",
+    "prod": "bash scripts/prod.sh",
+    "backup": "bash scripts/backup.sh",
+    "test": "npm run test -w anemi-backend"
+  },
+  "devDependencies": {
+    "prettier": "^3.9.4"
+  },
+  "allowScripts": {
+    "prisma@7.10.0": true,
+    "@prisma/engines@7.10.0": true,
+    "esbuild@0.28.2": true,
+    "unrs-resolver@1.12.2": true,
+    "bcrypt@6.0.0": true
+  }
+}

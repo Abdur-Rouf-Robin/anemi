@@ -1,0 +1,428 @@
+generator client {
+  provider = "prisma-client-js"
+  output   = "../../node_modules/.prisma/client"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum TitleType {
+  SERIES
+  MOVIE
+  OVA
+  ONA
+  SPECIAL
+}
+
+enum TitleStatus {
+  UPCOMING
+  AIRING
+  COMPLETED
+}
+
+enum PublishStatus {
+  DRAFT
+  ENCODING
+  READY
+  PUBLISHED
+  UNLISTED
+}
+
+enum Role {
+  VIEWER
+  MEMBER
+  MODERATOR
+  ADMIN
+}
+
+enum AudioKind {
+  SUB
+  DUB
+}
+
+enum AirSeason {
+  WINTER
+  SPRING
+  SUMMER
+  FALL
+}
+
+enum ListStatus {
+  WATCHING
+  PLAN_TO_WATCH
+  ON_HOLD
+  DROPPED
+  COMPLETED
+}
+
+enum RequestStatus {
+  OPEN
+  REVIEWING
+  FULFILLED
+  DECLINED
+}
+
+model User {
+  id            String   @id @default(cuid())
+  email         String   @unique
+  passwordHash  String
+  displayName   String
+  role          Role     @default(VIEWER)
+  totpSecret    String?
+  mfaEnabled    Boolean  @default(false)
+  autoPlay      Boolean  @default(true)
+  autoNext      Boolean  @default(true)
+  autoSkipIntro Boolean  @default(true)
+  theme         String   @default("dark")
+  locale        String   @default("en")
+  createdAt     DateTime @default(now())
+  progress      WatchProgress[]
+  watchLater    WatchLater[]
+  follows       Follow[]
+  history       WatchHistory[]
+  comments      Comment[]
+  listEntries   ListEntry[]
+  ratings       Rating[]
+  reports       CommentReport[]
+  notifications Notification[]
+  requests      TitleRequest[]
+  posts         CommunityPost[]
+  hostedRooms   WatchRoom[]
+  roomMessages  RoomMessage[]
+}
+
+model Genre {
+  id     String       @id @default(cuid())
+  slug   String       @unique
+  name   String
+  titles TitleGenre[]
+}
+
+model Title {
+  id          String        @id @default(cuid())
+  slug        String        @unique
+  type        TitleType
+  status      TitleStatus
+  publish     PublishStatus @default(DRAFT)
+  name        String
+  synopsis    String
+  year        Int?
+  hue         Int           @default(40)
+  spotlight   Boolean       @default(false)
+  viewCount   Int           @default(0)
+  studio      String?
+  ageRating   String?
+  airSeason   AirSeason?
+  scoreSum    Int           @default(0)
+  scoreCount  Int           @default(0)
+  posterUrl   String?
+  backdropUrl String?
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+  genres      TitleGenre[]
+  seasons     Season[]
+  watchLater  WatchLater[]
+  follows     Follow[]
+  listEntries ListEntry[]
+  ratings     Rating[]
+  viewEvents  ViewEvent[]
+
+  @@index([publish, year])
+  @@index([publish, viewCount])
+  @@index([publish, status, airSeason])
+}
+
+model TitleGenre {
+  titleId String
+  genreId String
+  title   Title @relation(fields: [titleId], references: [id], onDelete: Cascade)
+  genre   Genre @relation(fields: [genreId], references: [id], onDelete: Cascade)
+
+  @@id([titleId, genreId])
+}
+
+model Season {
+  id       String    @id @default(cuid())
+  titleId  String
+  number   Int
+  name     String?
+  title    Title     @relation(fields: [titleId], references: [id], onDelete: Cascade)
+  episodes Episode[]
+
+  @@unique([titleId, number])
+}
+
+model Episode {
+  id            String         @id @default(cuid())
+  seasonId      String
+  number        Int
+  slug          String
+  name          String
+  synopsis      String?
+  durationSec   Int?
+  airDate       DateTime?
+  publish       PublishStatus  @default(DRAFT)
+  audioKind     AudioKind      @default(SUB)
+  introStartSec Int?
+  introEndSec   Int?
+  outroStartSec Int?
+  subtitleUrl   String?
+  language      String         @default("")
+  videoUrl      String?
+  encodeStatus  String         @default("idle")
+  encodeError   String?
+  viewCount     Int            @default(0)
+  season        Season         @relation(fields: [seasonId], references: [id], onDelete: Cascade)
+  progress      WatchProgress[]
+  history       WatchHistory[]
+  comments      Comment[]
+  rooms         WatchRoom[]
+  encodeJobs    EncodeJob[]
+  captions      CaptionTrack[]
+
+  @@unique([seasonId, number, audioKind, language])
+}
+
+model CaptionTrack {
+  id        String  @id @default(cuid())
+  episodeId String
+  language  String
+  url       String
+  episode   Episode @relation(fields: [episodeId], references: [id], onDelete: Cascade)
+
+  @@unique([episodeId, language])
+}
+
+model Comment {
+  id        String          @id @default(cuid())
+  userId    String
+  episodeId String
+  body      String
+  spoiler   Boolean         @default(false)
+  parentId  String?
+  createdAt DateTime        @default(now())
+  user      User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  episode   Episode         @relation(fields: [episodeId], references: [id], onDelete: Cascade)
+  parent    Comment?        @relation("CommentReplies", fields: [parentId], references: [id], onDelete: Cascade)
+  replies   Comment[]       @relation("CommentReplies")
+  reports   CommentReport[]
+
+  @@index([episodeId, createdAt])
+}
+
+model CommentReport {
+  id        String   @id @default(cuid())
+  commentId String
+  userId    String
+  reason    String
+  createdAt DateTime @default(now())
+  comment   Comment  @relation(fields: [commentId], references: [id], onDelete: Cascade)
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([commentId, userId])
+}
+
+model ListEntry {
+  userId    String
+  titleId   String
+  status    ListStatus
+  score     Int?
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
+  user      User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  title     Title      @relation(fields: [titleId], references: [id], onDelete: Cascade)
+
+  @@id([userId, titleId])
+  @@index([userId, status])
+}
+
+model Rating {
+  userId    String
+  titleId   String
+  score     Int
+  createdAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  title     Title    @relation(fields: [titleId], references: [id], onDelete: Cascade)
+
+  @@id([userId, titleId])
+}
+
+model WatchProgress {
+  userId      String
+  episodeId   String
+  positionSec Int
+  durationSec Int
+  completed   Boolean  @default(false)
+  updatedAt   DateTime @updatedAt
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  episode     Episode  @relation(fields: [episodeId], references: [id], onDelete: Cascade)
+
+  @@id([userId, episodeId])
+  @@index([userId, updatedAt])
+}
+
+model WatchLater {
+  userId    String
+  titleId   String
+  createdAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  title     Title    @relation(fields: [titleId], references: [id], onDelete: Cascade)
+
+  @@id([userId, titleId])
+}
+
+model Follow {
+  userId    String
+  titleId   String
+  createdAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  title     Title    @relation(fields: [titleId], references: [id], onDelete: Cascade)
+
+  @@id([userId, titleId])
+}
+
+model WatchHistory {
+  id        String   @id @default(cuid())
+  userId    String
+  episodeId String
+  watchedAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  episode   Episode  @relation(fields: [episodeId], references: [id], onDelete: Cascade)
+
+  @@index([userId, watchedAt])
+}
+
+model Notification {
+  id        String   @id @default(cuid())
+  userId    String
+  kind      String
+  title     String
+  body      String
+  href      String?
+  read      Boolean  @default(false)
+  createdAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, read, createdAt])
+}
+
+model TitleRequest {
+  id           String        @id @default(cuid())
+  userId       String?
+  name         String
+  referenceUrl String?
+  details      String?
+  status       RequestStatus @default(OPEN)
+  createdAt    DateTime      @default(now())
+  user         User?         @relation(fields: [userId], references: [id], onDelete: SetNull)
+}
+
+model CommunityPost {
+  id        String   @id @default(cuid())
+  userId    String
+  category  String
+  title     String
+  body      String
+  createdAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([createdAt])
+}
+
+model WatchRoom {
+  id          String        @id @default(cuid())
+  code        String        @unique
+  episodeId   String
+  hostId      String
+  positionSec Int           @default(0)
+  playing     Boolean       @default(false)
+  createdAt   DateTime      @default(now())
+  episode     Episode       @relation(fields: [episodeId], references: [id], onDelete: Cascade)
+  host        User          @relation(fields: [hostId], references: [id], onDelete: Cascade)
+  messages    RoomMessage[]
+}
+
+model RoomMessage {
+  id        String    @id @default(cuid())
+  roomId    String
+  userId    String
+  body      String
+  createdAt DateTime  @default(now())
+  room      WatchRoom @relation(fields: [roomId], references: [id], onDelete: Cascade)
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([roomId, createdAt])
+}
+
+model Newsletter {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  createdAt DateTime @default(now())
+}
+
+model NewsletterCampaign {
+  id        String    @id @default(cuid())
+  subject   String
+  body      String
+  status    String    @default("draft")
+  sentCount Int       @default(0)
+  error     String?
+  createdAt DateTime  @default(now())
+  sentAt    DateTime?
+}
+
+model EncodeJob {
+  id         String    @id @default(cuid())
+  episodeId  String
+  status     String    @default("queued")
+  error      String?
+  videoUrl   String?
+  createdAt  DateTime  @default(now())
+  startedAt  DateTime?
+  finishedAt DateTime?
+  episode    Episode   @relation(fields: [episodeId], references: [id], onDelete: Cascade)
+
+  @@index([status, createdAt])
+  @@index([episodeId, createdAt])
+}
+
+model ViewEvent {
+  id        String   @id @default(cuid())
+  titleId   String
+  createdAt DateTime @default(now())
+  title     Title    @relation(fields: [titleId], references: [id], onDelete: Cascade)
+
+  @@index([titleId, createdAt])
+  @@index([createdAt])
+}
+
+model AuditLog {
+  id        String   @id @default(cuid())
+  actorId   String?
+  action    String
+  entity    String
+  entityId  String
+  meta      Json?
+  createdAt DateTime @default(now())
+}
+
+model ContactMessage {
+  id        String   @id @default(cuid())
+  name      String
+  email     String
+  body      String
+  createdAt DateTime @default(now())
+}
+
+model SiteSetting {
+  id                   String    @id @default("default")
+  announcement         String?
+  announcementHref     String?
+  scheduleMailEnabled  Boolean   @default(false)
+  scheduleMailLastAt   DateTime?
+  contactEmail         String?
+  communityGuidelines  String?
+  homeConfig           Json?
+  updatedAt            DateTime  @updatedAt
+}

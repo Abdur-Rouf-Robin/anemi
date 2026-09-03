@@ -1,0 +1,4 @@
+ALTER TABLE "User" ADD COLUMN "totpSecret" TEXT;
+ALTER TABLE "User" ADD COLUMN "mfaEnabled" BOOLEAN NOT NULL DEFAULT false;
+ALTER TABLE "Episode" ADD COLUMN "encodeStatus" TEXT NOT NULL DEFAULT 'idle';
+ALTER TABLE "Episode" ADD COLUMN "encodeError" TEXT;
