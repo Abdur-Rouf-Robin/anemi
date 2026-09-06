@@ -14,11 +14,11 @@ export function SiteFooter({ genres = [] }: { genres?: { slug: string; name: str
   const tx = useT();
 
   return (
-    <footer className="mt-16 border-t border-white/8 bg-black/35">
+    <footer className="mt-12 border-t border-white/8 bg-black/35 sm:mt-16">
       <div className="page-shell grid gap-8 border-b border-white/8 py-10 lg:grid-cols-[minmax(0,1.2fr)_minmax(0,1fr)] lg:items-center">
         <div>
           <p className="section-kicker">Weekly dispatch</p>
-          <h2 className="mt-2 text-3xl font-semibold tracking-tight sm:text-4xl">The week ahead, curated.</h2>
+          <h2 className="mt-2 text-2xl font-semibold tracking-tight sm:text-4xl">The week ahead, curated.</h2>
           <p className="mt-2 max-w-xl text-sm text-muted">
             New episodes, next week’s schedule, and one editor’s pick — sent when you subscribe.
           </p>
@@ -69,17 +69,17 @@ export function SiteFooter({ genres = [] }: { genres?: { slug: string; name: str
           title="Watch"
           links={[
             ["/latest", "Latest"],
-            ["/browse?sort=popular", "Popular"],
-            ["/browse?status=AIRING", "Trending"],
-            ["/schedule", "Schedule"]
+            ["/feed/latest.xml", "RSS"],
+            ["/schedule", "Schedule"],
+            ["/feed/schedule.ics", "Calendar"]
           ]}
         />
         <FooterCol
           title="Discover"
           links={[
             ["/browse?sort=score", "Highest rated"],
-            ["/browse?type=MOVIE", "Films"],
-            ["/browse?status=UPCOMING", "Airing soon"],
+            ["/charts", "Top 10"],
+            ["/studios", "Studios"],
             ["/az", "A–Z index"]
           ]}
         />
@@ -139,9 +139,15 @@ function FooterCol({ title, links }: { title: string; links: [string, string][] 
       <ul className="mt-3 space-y-2 text-sm text-muted">
         {links.map(([href, label]) => (
           <li key={href}>
-            <Link href={href} className="hover:text-ink">
-              {label}
-            </Link>
+            {href.startsWith("/feed/") ? (
+              <a href={href} className="hover:text-ink">
+                {label}
+              </a>
+            ) : (
+              <Link href={href} className="hover:text-ink">
+                {label}
+              </Link>
+            )}
           </li>
         ))}
       </ul>

@@ -18,3 +18,21 @@ export function artDir() {
   mkdirSync(dir, { recursive: true });
   return dir;
 }
+
+export function packDir() {
+  const dir = join(mediaRoot(), "pack");
+  mkdirSync(dir, { recursive: true });
+  return dir;
+}
+
+export function inboxRoot() {
+  const root = process.env.MEDIA_INBOX?.trim() || join(mediaRoot(), "..", "inbox");
+  mkdirSync(root, { recursive: true });
+  return root;
+}
+
+export function backupRoot() {
+  const explicit = process.env.BACKUP_ROOT?.trim();
+  if (explicit) return explicit;
+  return join(mediaRoot(), "..", "backups");
+}

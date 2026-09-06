@@ -39,7 +39,7 @@ export function WatchStage({
         )}
       >
         <div className="min-w-0">{player}</div>
-        {theater ? null : <div className="min-h-[240px] xl:min-h-0">{sidebar}</div>}
+        {theater ? null : <div className="min-h-0 xl:min-h-0">{sidebar}</div>}
       </div>
     </>
   );

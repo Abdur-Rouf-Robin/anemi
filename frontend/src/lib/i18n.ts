@@ -14,6 +14,8 @@ const ja: Record<string, string> = {
   Library: "ライブラリ",
   Latest: "最新",
   "A–Z": "A–Z",
+  "Top 10": "トップ10",
+  Studios: "スタジオ",
   Subbed: "字幕",
   Dubbed: "吹替",
   Sub: "字幕",

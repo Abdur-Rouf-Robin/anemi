@@ -34,9 +34,15 @@ function ChartList({
               </p>
             </div>
             {title.windowViews != null ? (
-              <span className="shrink-0 text-xs font-semibold text-accent">{title.windowViews} views</span>
+              <span className="shrink-0 text-xs font-semibold text-accent">
+                {title.windowViews}
+                <span className="hidden sm:inline"> views</span>
+              </span>
             ) : title.viewCount ? (
-              <span className="shrink-0 text-xs text-muted">{title.viewCount} views</span>
+              <span className="shrink-0 text-xs text-muted">
+                {title.viewCount}
+                <span className="hidden sm:inline"> views</span>
+              </span>
             ) : (
               <span className="text-muted">›</span>
             )}

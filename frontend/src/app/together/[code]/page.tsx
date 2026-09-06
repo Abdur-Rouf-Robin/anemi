@@ -7,7 +7,7 @@ import type { Socket } from "socket.io-client";
 import { MediaPlayer } from "@/components/player/media-player";
 import { PageIntro } from "@/components/page-intro";
 import { ShareButton } from "@/components/share-button";
-import { getMe } from "@/lib/client-api";
+import { useSession } from "@/components/session-provider";
 import { togetherSocket } from "@/lib/together-socket";
 
 type ChatItem = { id: string; body: string; displayName: string };
@@ -34,6 +34,7 @@ type Room = {
 };
 
 export default function TogetherRoomPage() {
+  const { user } = useSession();
   const { code } = useParams<{ code: string }>();
   const videoRef = useRef<HTMLVideoElement>(null);
   const socketRef = useRef<Socket | null>(null);
@@ -65,13 +66,8 @@ export default function TogetherRoomPage() {
 
     socket.on("connect", () => {
       setLive(true);
-      void getMe()
-        .then((data) => {
-          meIdRef.current = data.user?.id ?? null;
-        })
-        .catch(() => undefined)
-        .finally(() => {
-          if (cancelled) return;
+      meIdRef.current = user?.id ?? null;
+      if (!cancelled) {
           socket.emit("join", { code }, (res: { room?: Room; error?: string }) => {
             if (res?.error || !res.room) {
               setError(res?.error || "Room not found");
@@ -84,7 +80,7 @@ export default function TogetherRoomPage() {
             setError("");
             window.setTimeout(() => applySync(res.room!.positionSec, res.room!.playing), 80);
           });
-        });
+      }
     });
     socket.on("disconnect", () => setLive(false));
     socket.on("sync", (payload: { positionSec: number; playing: boolean }) => {
@@ -104,7 +100,7 @@ export default function TogetherRoomPage() {
       socket.disconnect();
       socketRef.current = null;
     };
-  }, [code]);
+  }, [code, user?.id]);
 
   function sendSync(positionSec: number, playing: boolean) {
     if (!hostRef.current || applying.current) return;
@@ -127,7 +123,7 @@ export default function TogetherRoomPage() {
   const titleName = room.episode.season.title.name;
 
   return (
-    <main className="watch-shell py-6 pb-16">
+    <main className="watch-shell py-4 pb-8 sm:py-6">
       <PageIntro
         kicker={`Room ${room.code} · ${live ? "Live" : "Reconnecting"}`}
         title={`${titleName} · E${room.episode.number}`}
@@ -159,7 +155,7 @@ export default function TogetherRoomPage() {
       </div>
       {viewers.length ? <p className="mt-3 text-xs text-muted">Watching: {viewers.join(", ")}</p> : null}
       <form
-        className="card-panel mt-6 flex gap-2 p-3"
+        className="card-panel mt-6 flex flex-col gap-2 p-3 sm:flex-row"
         onSubmit={(event) => {
           event.preventDefault();
           const body = String(new FormData(event.currentTarget).get("body") ?? "").trim();

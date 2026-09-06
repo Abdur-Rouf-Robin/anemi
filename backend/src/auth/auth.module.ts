@@ -9,6 +9,7 @@ import { MfaService } from "./mfa.service";
 import { CsrfGuard } from "./guards/csrf.guard";
 import { JwtAuthGuard } from "./guards/jwt-auth.guard";
 import { RolesGuard } from "./guards/roles.guard";
+import { StaffMfaGuard } from "./guards/staff-mfa.guard";
 
 @Module({
   imports: [
@@ -24,10 +25,11 @@ import { RolesGuard } from "./guards/roles.guard";
   providers: [
     AuthService,
     MfaService,
+    StaffMfaGuard,
     { provide: APP_GUARD, useClass: JwtAuthGuard },
     { provide: APP_GUARD, useClass: RolesGuard },
     { provide: APP_GUARD, useClass: CsrfGuard }
   ],
-  exports: [AuthService, JwtModule]
+  exports: [AuthService, JwtModule, StaffMfaGuard]
 })
 export class AuthModule {}

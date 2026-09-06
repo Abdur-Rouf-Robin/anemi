@@ -30,17 +30,32 @@ html,
 body {
   background: var(--color-canvas);
   color: var(--color-ink);
+  overflow-x: clip;
 }
 
 body {
   font-family: var(--font-sans);
   min-height: 100dvh;
+  -webkit-tap-highlight-color: transparent;
   background-image:
     radial-gradient(1200px 640px at 12% -20%, color-mix(in oklch, var(--color-accent) 22%, transparent), transparent 58%),
     radial-gradient(900px 520px at 108% -8%, oklch(0.38 0.12 280 / 0.42), transparent 56%),
     radial-gradient(720px 360px at 50% 118%, oklch(0.24 0.08 275 / 0.38), transparent 62%),
     linear-gradient(180deg, oklch(0.12 0.03 275), var(--color-canvas) 38%);
   background-attachment: fixed;
+}
+
+@media (max-width: 767px) {
+  body {
+    background-attachment: scroll;
+  }
+
+  .field-input,
+  input:not([type="checkbox"]):not([type="radio"]):not([type="range"]),
+  select,
+  textarea {
+    font-size: 16px;
+  }
 }
 
 html.light body {
@@ -57,6 +72,11 @@ input,
 button,
 a {
   outline-color: var(--color-accent);
+}
+
+a,
+button {
+  touch-action: manipulation;
 }
 
 .no-scrollbar::-webkit-scrollbar {
@@ -90,7 +110,7 @@ a {
   margin-inline: auto;
   width: 100%;
   max-width: 100rem;
-  padding-inline: clamp(0.85rem, 2.2vw, 2rem);
+  padding-inline: clamp(0.75rem, 2.2vw, 2rem);
 }
 
 .watch-shell {

@@ -2,7 +2,8 @@
 
 import { useEffect } from "react";
 
-import { api, getMe } from "@/lib/client-api";
+import { useSession } from "@/components/session-provider";
+import { api } from "@/lib/client-api";
 import { readLocalPrefs, writeLocalPrefs } from "@/lib/prefs";
 import type { Preferences } from "@/lib/types";
 
@@ -12,20 +13,21 @@ function applyTheme(theme: string) {
 }
 
 export function ThemeProvider() {
+  const { user } = useSession();
+
   useEffect(() => {
     const local = readLocalPrefs();
     applyTheme(local.theme);
     document.documentElement.lang = local.locale === "jp" ? "ja" : "en";
-    getMe()
-      .then(async ({ user }) => {
-        if (!user) return;
-        const prefs = await api<Preferences>("/preferences/me");
+    if (!user) return;
+    api<Preferences>("/preferences/me")
+      .then((prefs) => {
         writeLocalPrefs({ ...local, ...prefs });
         if (prefs.theme) applyTheme(prefs.theme);
         document.documentElement.lang = prefs.locale === "jp" ? "ja" : "en";
       })
       .catch(() => undefined);
-  }, []);
+  }, [user]);
   return null;
 }
 

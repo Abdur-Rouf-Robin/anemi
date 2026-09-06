@@ -15,7 +15,7 @@ export function AdminHeader({
   return (
     <div className="mb-6 flex flex-wrap items-end justify-between gap-3">
       <div>
-        <h1 className="text-3xl font-semibold tracking-tight">{title}</h1>
+        <h1 className="text-2xl font-semibold tracking-tight sm:text-3xl">{title}</h1>
         {description ? <p className="mt-1 max-w-xl text-sm text-muted">{description}</p> : null}
       </div>
       {action}
@@ -31,7 +31,7 @@ export function AdminCard({
   className?: string;
 }) {
   return (
-    <div className={cn("card-panel p-5", className)}>{children}</div>
+    <div className={cn("card-panel p-4 sm:p-5", className)}>{children}</div>
   );
 }
 

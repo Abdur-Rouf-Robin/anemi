@@ -1,8 +1,11 @@
 import { Injectable, NotFoundException } from "@nestjs/common";
 import { Prisma, PublishStatus } from "@prisma/client";
 
+import { publicSiteUrl } from "../lib/public-site-url";
+import { studioSlug } from "../lib/studio-slug";
 import { PrismaService } from "../prisma/prisma.service";
 import { QueryTitlesDto } from "./dto/query-titles.dto";
+import { buildLatestRss, buildScheduleIcs } from "./feeds";
 import { mapTitle, published, scoreAvg, titleCard } from "./title-card";
 import { normalizeHomeConfig } from "./home-config";
 
@@ -128,6 +131,7 @@ export class CatalogService {
     const upcomingCards = upcoming
       .map(mapTitle)
       .sort((a, b) => airDateSort(a.nextAirDate) - airDateSort(b.nextAirDate));
+    const collections = await this.collectionShelves(config.collections);
     return {
       spotlight: spotlights[0] ?? null,
       spotlights,
@@ -143,8 +147,35 @@ export class CatalogService {
       charts,
       featuredGenres,
       homeSections: config.sections,
-      watchNextTitle: watchNextRow ? mapTitle(watchNextRow) : null
+      watchNextTitle: watchNextRow ? mapTitle(watchNextRow) : null,
+      collections
     };
+  }
+
+  async collection(slug: string) {
+    const setting = await this.prisma.siteSetting.findUnique({ where: { id: "default" } });
+    const config = normalizeHomeConfig(setting?.homeConfig);
+    const shelf = config.collections.find((item) => item.slug === slug);
+    if (!shelf) throw new NotFoundException("Collection not found");
+    const [mapped] = await this.collectionShelves([shelf]);
+    if (!mapped) throw new NotFoundException("Collection not found");
+    return mapped;
+  }
+
+  private async collectionShelves(shelves: { name: string; slug: string; titleIds: string[] }[]) {
+    const mapped = await Promise.all(
+      shelves.map(async (shelf) => {
+        if (!shelf.titleIds.length) return null;
+        const rows = await this.prisma.title.findMany({
+          where: { id: { in: shelf.titleIds }, ...published },
+          select: titleCard
+        });
+        const items = orderMapped(rows, shelf.titleIds);
+        if (!items.length) return null;
+        return { name: shelf.name, slug: shelf.slug, items };
+      })
+    );
+    return mapped.filter((row) => row !== null);
   }
 
   async discover() {
@@ -236,6 +267,7 @@ export class CatalogService {
         ? {
             OR: [
               { name: { contains: query.q, mode: "insensitive" } },
+              { nameJa: { contains: query.q, mode: "insensitive" } },
               { synopsis: { contains: query.q, mode: "insensitive" } },
               { studio: { contains: query.q, mode: "insensitive" } }
             ]
@@ -257,6 +289,12 @@ export class CatalogService {
             : query.sort === "updated"
               ? { updatedAt: "desc" }
               : { viewCount: "desc" };
+
+    if (query.studio) {
+      const names = await this.studioNamesForSlug(query.studio);
+      if (!names.length) return { items: [], total: 0 };
+      where.studio = { in: names };
+    }
 
     const skip = query.skip ?? 0;
     const [rows, total] = await this.prisma.$transaction([
@@ -295,6 +333,15 @@ export class CatalogService {
     return { items: await this.latestEpisodes(take, audio) };
   }
 
+  async latestRss() {
+    return buildLatestRss(publicSiteUrl(), await this.latestEpisodes(48));
+  }
+
+  async scheduleIcs() {
+    const { days } = await this.schedule();
+    return buildScheduleIcs(publicSiteUrl(), days);
+  }
+
   async schedule() {
     const start = new Date();
     start.setHours(0, 0, 0, 0);
@@ -328,6 +375,43 @@ export class CatalogService {
     return {
       days: [...days.entries()].map(([date, items]) => ({ date, items }))
     };
+  }
+
+  async studios() {
+    const rows = await this.prisma.title.findMany({
+      where: { ...published, studio: { not: null } },
+      select: { studio: true }
+    });
+    const map = new Map<string, { name: string; slug: string; count: number }>();
+    for (const row of rows) {
+      const name = row.studio?.trim();
+      if (!name) continue;
+      const slug = studioSlug(name);
+      const current = map.get(slug);
+      if (current) current.count += 1;
+      else map.set(slug, { name, slug, count: 1 });
+    }
+    return [...map.values()].sort((a, b) => a.name.localeCompare(b.name));
+  }
+
+  async studio(slug: string) {
+    const names = await this.studioNamesForSlug(slug);
+    if (!names.length) throw new NotFoundException("Studio not found");
+    const items = await this.prisma.title.findMany({
+      where: { ...published, studio: { in: names } },
+      orderBy: { name: "asc" },
+      select: titleCard
+    });
+    return { name: names[0], slug, items: items.map(mapTitle) };
+  }
+
+  private async studioNamesForSlug(slug: string) {
+    const rows = await this.prisma.title.findMany({
+      where: { ...published, studio: { not: null } },
+      distinct: ["studio"],
+      select: { studio: true }
+    });
+    return rows.map((row) => row.studio!).filter((name) => studioSlug(name) === slug);
   }
 
   async charts() {
@@ -368,7 +452,8 @@ export class CatalogService {
                 introEndSec: true,
                 outroStartSec: true,
                 subtitleUrl: true,
-                videoUrl: true
+                videoUrl: true,
+                kind: true
               }
             }
           }
@@ -394,6 +479,7 @@ export class CatalogService {
                 id: true,
                 slug: true,
                 name: true,
+                nameJa: true,
                 hue: true,
                 type: true,
                 studio: true,
@@ -419,6 +505,7 @@ export class CatalogService {
                 language: true,
                 videoUrl: true,
                 subtitleUrl: true,
+                kind: true,
                 captions: { select: { language: true, url: true } }
               }
             }
@@ -427,19 +514,6 @@ export class CatalogService {
       }
     });
     if (!episode) throw new NotFoundException("Episode not found");
-    await this.prisma.$transaction([
-      this.prisma.episode.update({
-        where: { id },
-        data: { viewCount: { increment: 1 } }
-      }),
-      this.prisma.title.update({
-        where: { id: episode.season.title.id },
-        data: { viewCount: { increment: 1 } }
-      }),
-      this.prisma.viewEvent.create({
-        data: { titleId: episode.season.title.id }
-      })
-    ]);
     return {
       ...episode,
       season: {
@@ -451,6 +525,28 @@ export class CatalogService {
         }
       }
     };
+  }
+
+  async recordView(id: string) {
+    const episode = await this.prisma.episode.findFirst({
+      where: { id, ...published },
+      select: { id: true, season: { select: { titleId: true } } }
+    });
+    if (!episode) throw new NotFoundException("Episode not found");
+    await this.prisma.$transaction([
+      this.prisma.episode.update({
+        where: { id },
+        data: { viewCount: { increment: 1 } }
+      }),
+      this.prisma.title.update({
+        where: { id: episode.season.titleId },
+        data: { viewCount: { increment: 1 } }
+      }),
+      this.prisma.viewEvent.create({
+        data: { titleId: episode.season.titleId }
+      })
+    ]);
+    return { ok: true };
   }
 
   async rate(userId: string, slug: string, score: number) {

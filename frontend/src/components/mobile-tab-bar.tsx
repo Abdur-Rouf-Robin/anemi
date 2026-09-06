@@ -17,10 +17,10 @@ const tabs = [
 export function MobileTabBar() {
   const pathname = usePathname();
   const tx = useT();
-  if (pathname.startsWith("/watch") || pathname.startsWith("/admin")) return null;
+  if (pathname.startsWith("/watch") || pathname.startsWith("/admin") || pathname.startsWith("/together/")) return null;
 
   return (
-    <nav className="fixed inset-x-0 bottom-0 z-30 border-t border-line bg-canvas/90 backdrop-blur-md md:hidden">
+    <nav className="fixed inset-x-0 bottom-0 z-30 border-t border-line bg-canvas/90 pb-[env(safe-area-inset-bottom,0px)] backdrop-blur-md md:hidden">
       <ul className="grid grid-cols-4">
         {tabs.map((tab) => {
           const active = tab.href === "/" ? pathname === "/" : pathname.startsWith(tab.href);
@@ -30,7 +30,7 @@ export function MobileTabBar() {
               <Link
                 href={tab.href}
                 className={cn(
-                  "flex flex-col items-center gap-1 py-2.5 text-[11px]",
+                  "flex min-h-12 flex-col items-center justify-center gap-0.5 py-2 text-[11px]",
                   active ? "text-accent" : "text-muted"
                 )}
               >

@@ -17,7 +17,8 @@ import {
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useRef, useState, type RefObject } from "react";
 
-import { api, getMe } from "@/lib/client-api";
+import { useSession } from "@/components/session-provider";
+import { api } from "@/lib/client-api";
 import type { Preferences } from "@/lib/types";
 import { readLocalPrefs, writeLocalPrefs } from "@/lib/prefs";
 import { cn, formatClock, audioTrackLabel, captionTrackLabel } from "@/lib/utils";
@@ -108,6 +109,8 @@ export function MediaPlayer({
     on: (event: string, cb: () => void) => void;
   } | null>(null);
   const router = useRouter();
+  const { user } = useSession();
+  const viewedRef = useRef(false);
   const [prefs, setPrefs] = useState<Preferences>({
     autoPlay: true,
     autoNext: true,
@@ -168,13 +171,6 @@ export function MediaPlayer({
   useEffect(() => {
     const local = readLocalPrefs();
     setPrefs(local);
-    getMe()
-      .then(async ({ user }) => {
-        if (!user) return;
-        const remote = await api<Preferences>("/preferences/me");
-        setPrefs(remote);
-      })
-      .catch(() => undefined);
     const storedVol = Number(localStorage.getItem("anemi-volume"));
     const storedSpeed = Number(localStorage.getItem("anemi-speed"));
     const storedCap = localStorage.getItem("anemi-captions");
@@ -197,6 +193,23 @@ export function MediaPlayer({
     }
     setTools(readTools());
   }, []);
+
+  useEffect(() => {
+    if (!user) return;
+    api<Preferences>("/preferences/me")
+      .then(setPrefs)
+      .catch(() => undefined);
+  }, [user?.id]);
+
+  useEffect(() => {
+    viewedRef.current = false;
+  }, [episodeId]);
+
+  useEffect(() => {
+    if (!playing || viewedRef.current || !episodeId) return;
+    viewedRef.current = true;
+    void api(`/catalog/episodes/${episodeId}/view`, { method: "POST" }).catch(() => undefined);
+  }, [playing, episodeId]);
 
   const bumpChrome = useCallback(() => {
     setChrome(true);
@@ -689,9 +702,12 @@ export function MediaPlayer({
     return (
       <div className="flex aspect-video items-center justify-center rounded-lg bg-black text-center ring-1 ring-white/10">
         <div>
-          <p className="text-xs tracking-[0.2em] text-muted uppercase">No file yet</p>
+          <p className="text-xs tracking-[0.2em] text-muted uppercase">Not available yet</p>
           <h2 className="mt-2 text-2xl font-semibold">{title}</h2>
           <p className="mt-1 text-sm text-muted">{episodeName}</p>
+          <p className="mx-auto mt-3 max-w-sm text-xs text-muted">
+            This episode has no licensed file. Staff rsync into the inbox, import, encode, then publish.
+          </p>
         </div>
       </div>
     );
@@ -1391,7 +1407,7 @@ export function MediaPlayer({
               setVolume(Number(event.target.value));
               setMuted(false);
             }}
-            className="w-16 accent-[var(--color-accent)]"
+            className="hidden w-16 accent-[var(--color-accent)] sm:block"
             aria-label="Volume"
           />
           <span className="ml-auto" />
@@ -1438,12 +1454,14 @@ export function MediaPlayer({
           >
             <Settings className="size-4" />
           </IconButton>
-          <IconButton label="Picture in picture" onClick={togglePiP}>
-            <PictureInPicture2 className="size-4" />
-          </IconButton>
+          <span className="hidden sm:contents">
+            <IconButton label="Picture in picture" onClick={togglePiP}>
+              <PictureInPicture2 className="size-4" />
+            </IconButton>
+          </span>
           <button
             type="button"
-            className="px-1.5 text-[11px] text-white/80 hover:text-white"
+            className="hidden px-1.5 text-[11px] text-white/80 hover:text-white md:inline"
             onClick={() => setTheater((v) => !v)}
           >
             {theater ? "Exit theater" : "Theater"}

@@ -18,6 +18,11 @@ export class UpsertTitleDto {
   @MaxLength(80)
   name!: string;
 
+  @IsOptional()
+  @IsString()
+  @MaxLength(80)
+  nameJa?: string;
+
   @IsString()
   @MinLength(2)
   @MaxLength(80)

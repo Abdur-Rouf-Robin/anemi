@@ -3,7 +3,8 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 
-import { api, getMe } from "@/lib/client-api";
+import { useSession } from "@/components/session-provider";
+import { api } from "@/lib/client-api";
 import { cn } from "@/lib/utils";
 
 type CommentItem = {
@@ -18,13 +19,14 @@ type CommentItem = {
 
 export function EpisodeComments({ episodeId }: { episodeId: string }) {
   const [items, setItems] = useState<CommentItem[]>([]);
-  const [signedIn, setSignedIn] = useState(false);
-  const [meId, setMeId] = useState<string | null>(null);
   const [error, setError] = useState("");
   const [sort, setSort] = useState<"newest" | "oldest" | "top">("newest");
   const [revealed, setRevealed] = useState<Record<string, boolean>>({});
   const [tab, setTab] = useState<"comments" | "guidelines">("comments");
   const [guidelines, setGuidelines] = useState("");
+  const { user } = useSession();
+  const signedIn = Boolean(user);
+  const meId = user?.id ?? null;
 
   async function load(nextSort = sort) {
     const data = await api<{ items: CommentItem[] }>(
@@ -35,12 +37,6 @@ export function EpisodeComments({ episodeId }: { episodeId: string }) {
 
   useEffect(() => {
     void load().catch(() => setItems([]));
-    getMe()
-      .then((data) => {
-        setSignedIn(Boolean(data.user));
-        setMeId(data.user?.id ?? null);
-      })
-      .catch(() => setSignedIn(false));
     api<{ communityGuidelines: string | null }>("/catalog/announcement")
       .then((data) => setGuidelines((data.communityGuidelines ?? "").trim()))
       .catch(() => setGuidelines(""));

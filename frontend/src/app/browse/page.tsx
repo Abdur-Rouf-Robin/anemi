@@ -18,6 +18,7 @@ function heading(params: {
   audio?: string;
   genre?: string;
   genreName?: string;
+  studioName?: string;
 }) {
   if (params.status === "UPCOMING") {
     return { title: "Coming soon", blurb: "Titles with a published air date. Dates show on the poster." };
@@ -33,6 +34,7 @@ function heading(params: {
   if (params.status === "AIRING") return { title: "Airing now", blurb: "Currently publishing." };
   if (params.status === "COMPLETED") return { title: "Completed", blurb: "Finished titles." };
   if (params.genreName) return { title: params.genreName, blurb: "Filtered by genre." };
+  if (params.studioName) return { title: params.studioName, blurb: "Titles from this studio." };
   return { title: "Browse", blurb: "Filter by type, status, audio, season, or genre." };
 }
 
@@ -49,6 +51,7 @@ export default async function BrowsePage({
     year?: string;
     season?: string;
     audio?: string;
+    studio?: string;
     page?: string;
   }>;
 }) {
@@ -64,6 +67,7 @@ export default async function BrowsePage({
       year: params.year,
       season: params.season,
       audio: params.audio,
+      studio: params.studio,
       take: String(TAKE),
       skip
     }),
@@ -73,7 +77,8 @@ export default async function BrowsePage({
   const locale = await requestLocale();
   const copy = heading({
     ...params,
-    genreName: genres.find((genre) => genre.slug === params.genre)?.name
+    genreName: genres.find((genre) => genre.slug === params.genre)?.name,
+    studioName: params.studio
   });
 
   function hrefFor(nextPage: number) {

@@ -1,16 +1,28 @@
 import { BadRequestException, ConflictException, Injectable, NotFoundException } from "@nestjs/common";
-import { Prisma, PublishStatus } from "@prisma/client";
-import { writeFile } from "node:fs/promises";
-import { join } from "node:path";
+import { Prisma, PublishStatus, Role } from "@prisma/client";
+import { hash } from "bcrypt";
+import { copyFile, readdir, stat, unlink, writeFile } from "node:fs/promises";
+import { join, relative as pathRelative } from "node:path";
 
 import { CommunityService } from "../community/community.service";
+import { encodeJobProgress } from "../media/encode-live";
 import { EncodeService } from "../media/encode.service";
-import { artDir, episodeDir } from "../media/media.paths";
+import { resolveUnderRoot } from "../media/inbox-path";
+import { VIDEO_NAME } from "../media/media-limits";
+import { artDir, episodeDir, inboxRoot, packDir } from "../media/media.paths";
+import type { ImportInboxDto } from "./dto/import-inbox.dto";
 import { PrismaService } from "../prisma/prisma.service";
 import { mailFrom, mailTransport, smtpConfigured } from "./mailer";
+import { episodeReadyToPublish } from "./episode-ready";
+import { parseEpisodeFilename } from "./parse-episode-filename";
 import type { UpsertEpisodeDto } from "./dto/upsert-episode.dto";
 import type { UpsertTitleDto } from "./dto/upsert-title.dto";
+import { newInviteCode } from "../auth/reset-token";
+import { normalizeSignupMode } from "../auth/signup-mode";
 import { normalizeHomeConfig } from "../catalog/home-config";
+import { readHealth } from "../health/health-status";
+import { formatBytes, readStorage } from "../health/storage-status";
+import { publicSiteUrl } from "../lib/public-site-url";
 
 @Injectable()
 export class AdminService {
@@ -32,7 +44,10 @@ export class AdminService {
       posts,
       subscribers,
       recentTitles,
-      recentRequests
+      recentRequests,
+      invitesOpen,
+      invitesUsed,
+      invitesExpired
     ] = await Promise.all([
       this.prisma.title.count({ where: { publish: PublishStatus.PUBLISHED } }),
       this.prisma.title.count(),
@@ -53,6 +68,13 @@ export class AdminService {
         orderBy: { createdAt: "desc" },
         take: 6,
         select: { id: true, name: true, status: true, createdAt: true }
+      }),
+      this.prisma.invite.count({
+        where: { usedAt: null, revokedAt: null, expiresAt: { gt: new Date() } }
+      }),
+      this.prisma.invite.count({ where: { usedAt: { not: null } } }),
+      this.prisma.invite.count({
+        where: { usedAt: null, revokedAt: null, expiresAt: { lte: new Date() } }
       })
     ]);
     return {
@@ -66,9 +88,36 @@ export class AdminService {
       posts,
       subscribers,
       encoding: await this.prisma.encodeJob.count({ where: { status: { in: ["queued", "encoding"] } } }),
+      playable: await this.prisma.episode.count({
+        where: { videoUrl: { not: null } }
+      }),
+      encodeLive: this.encode.snapshot(),
+      inboxHasFiles: await this.inboxHasFiles(),
+      health: await readHealth(this.prisma),
+      storage: await readStorage().then((row) => ({
+        ...row,
+        mediaLabel: formatBytes(row.mediaBytes),
+        backupLabel: formatBytes(row.backupBytes)
+      })),
+      invitesOpen,
+      invitesUsed,
+      invitesExpired,
       recentTitles,
       recentRequests
     };
+  }
+
+  audit(actorId: string | null, action: string, entity: string, entityId: string, meta?: Prisma.InputJsonValue) {
+    return this.prisma.auditLog.create({
+      data: { actorId, action, entity, entityId, meta: meta ?? undefined }
+    });
+  }
+
+  auditLog() {
+    return this.prisma.auditLog.findMany({
+      orderBy: { createdAt: "desc" },
+      take: 80
+    });
   }
 
   genres() {
@@ -217,10 +266,11 @@ export class AdminService {
     }
   }
 
-  encodeJobs() {
-    return this.prisma.encodeJob.findMany({
+  async encodeJobs() {
+    const live = this.encode.snapshot();
+    const jobs = await this.prisma.encodeJob.findMany({
       orderBy: { createdAt: "desc" },
-      take: 60,
+      take: 120,
       include: {
         episode: {
           select: {
@@ -229,11 +279,34 @@ export class AdminService {
             number: true,
             audioKind: true,
             encodeStatus: true,
+            publish: true,
+            videoUrl: true,
             season: { select: { number: true, title: { select: { name: true, id: true } } } }
           }
         }
       }
     });
+    return jobs.map((job) => ({
+      ...job,
+      progress: encodeJobProgress(job.episode.id, job.status, live)
+    }));
+  }
+
+  private async inboxHasFiles() {
+    try {
+      const entries = await readdir(inboxRoot(), { withFileTypes: true });
+      return entries.some((entry) => entry.isFile() || entry.isDirectory());
+    } catch {
+      return false;
+    }
+  }
+
+  retryEncode(episodeId: string) {
+    return this.encode.retry(episodeId);
+  }
+
+  cancelEncode(episodeId: string) {
+    return this.encode.cancel(episodeId);
   }
 
   comments() {
@@ -248,11 +321,12 @@ export class AdminService {
   }
 
   async settings() {
-    return this.prisma.siteSetting.upsert({
+    const row = await this.prisma.siteSetting.upsert({
       where: { id: "default" },
       update: {},
       create: { id: "default" }
     });
+    return { ...row, smtpConfigured: smtpConfigured() };
   }
 
   async updateSettings(dto: {
@@ -261,10 +335,11 @@ export class AdminService {
     scheduleMailEnabled?: boolean;
     contactEmail?: string;
     communityGuidelines?: string;
+    signupMode?: string;
     homeConfig?: unknown;
   }) {
     const homeConfig = dto.homeConfig !== undefined ? normalizeHomeConfig(dto.homeConfig) : undefined;
-    return this.prisma.siteSetting.upsert({
+    const row = await this.prisma.siteSetting.upsert({
       where: { id: "default" },
       update: {
         ...(dto.announcement !== undefined ? { announcement: dto.announcement.trim() || null } : {}),
@@ -274,6 +349,7 @@ export class AdminService {
         ...(dto.communityGuidelines !== undefined
           ? { communityGuidelines: dto.communityGuidelines.trim() || null }
           : {}),
+        ...(dto.signupMode ? { signupMode: normalizeSignupMode(dto.signupMode) } : {}),
         ...(homeConfig ? { homeConfig: homeConfig as Prisma.InputJsonValue } : {})
       },
       create: {
@@ -283,9 +359,11 @@ export class AdminService {
         scheduleMailEnabled: dto.scheduleMailEnabled ?? false,
         contactEmail: dto.contactEmail?.trim() || null,
         communityGuidelines: dto.communityGuidelines?.trim() || null,
+        signupMode: normalizeSignupMode(dto.signupMode),
         homeConfig: homeConfig ? (homeConfig as Prisma.InputJsonValue) : undefined
       }
     });
+    return { ...row, smtpConfigured: smtpConfigured() };
   }
 
   async homepage() {
@@ -416,6 +494,7 @@ export class AdminService {
     const title = await this.prisma.title.create({
       data: {
         name: dto.name,
+        nameJa: dto.nameJa?.trim() || null,
         slug: dto.slug.trim().toLowerCase(),
         type: dto.type,
         status: dto.status,
@@ -442,6 +521,7 @@ export class AdminService {
       where: { id },
       data: {
         name: dto.name,
+        nameJa: dto.nameJa?.trim() || null,
         slug: dto.slug.trim().toLowerCase(),
         type: dto.type,
         status: dto.status,
@@ -466,6 +546,61 @@ export class AdminService {
     return { ok: true };
   }
 
+  async createUser(dto: {
+    email: string;
+    displayName: string;
+    password: string;
+    role?: "VIEWER" | "MEMBER" | "MODERATOR" | "ADMIN";
+  }) {
+    const email = dto.email.toLowerCase();
+    const existing = await this.prisma.user.findUnique({ where: { email } });
+    if (existing) throw new ConflictException("An account with that email already exists");
+    return this.prisma.user.create({
+      data: {
+        email,
+        displayName: dto.displayName.trim(),
+        passwordHash: await hash(dto.password, 12),
+        role: dto.role ?? Role.MEMBER
+      },
+      select: { id: true, email: true, displayName: true, role: true, mfaEnabled: true, createdAt: true }
+    });
+  }
+
+  invites() {
+    return this.prisma.invite.findMany({
+      orderBy: { createdAt: "desc" },
+      take: 80
+    });
+  }
+
+  async createInvite(actorId: string, dto: { email?: string; note?: string; days?: number }) {
+    const days = dto.days ?? 14;
+    const code = newInviteCode();
+    const row = await this.prisma.invite.create({
+      data: {
+        code,
+        email: dto.email?.trim().toLowerCase() || null,
+        note: dto.note?.trim() || null,
+        createdBy: actorId,
+        expiresAt: new Date(Date.now() + days * 24 * 60 * 60 * 1000)
+      }
+    });
+    return {
+      ...row,
+      url: `${publicSiteUrl()}/account?mode=signup&invite=${row.code}`
+    };
+  }
+
+  async revokeInvite(id: string) {
+    const invite = await this.prisma.invite.findUnique({ where: { id } });
+    if (!invite) throw new NotFoundException("Invite not found");
+    if (invite.usedAt) throw new BadRequestException("That invite was already used");
+    return this.prisma.invite.update({
+      where: { id },
+      data: { revokedAt: new Date() }
+    });
+  }
+
   users() {
     return this.prisma.user.findMany({
       orderBy: { createdAt: "desc" },
@@ -485,7 +620,7 @@ export class AdminService {
     if (!user) throw new NotFoundException("User not found");
     return this.prisma.user.update({
       where: { id },
-      data: { role },
+      data: { role, tokenVersion: { increment: 1 } },
       select: { id: true, email: true, displayName: true, role: true }
     });
   }
@@ -553,6 +688,7 @@ export class AdminService {
         number,
         slug: `${title.slug}-s${season.number}e${number}${audioKind === "DUB" ? "-dub" : ""}${langSlug && langSlug !== "original" ? `-${langSlug}` : ""}`,
         name: dto.name,
+        kind: dto.kind ?? "CANON",
         videoUrl: dto.videoUrl,
         durationSec: dto.durationSec,
         introStartSec: dto.introStartSec,
@@ -560,15 +696,9 @@ export class AdminService {
         audioKind,
         language,
         airDate: dto.airDate ? new Date(dto.airDate) : undefined,
-        publish: PublishStatus.PUBLISHED
+        publish: dto.publish ?? PublishStatus.DRAFT
       }
     });
-    await this.community.notifyFollowers(
-      titleId,
-      title.name,
-      `Episode ${number} is up: ${dto.name}`,
-      `/watch/${episode.id}`
-    );
     return episode;
   }
 
@@ -590,6 +720,34 @@ export class AdminService {
     return { ok: true };
   }
 
+  async publishSeasonReady(seasonId: string) {
+    const season = await this.prisma.season.findUnique({
+      where: { id: seasonId },
+      include: { title: { select: { id: true, name: true, slug: true } }, episodes: true }
+    });
+    if (!season) throw new NotFoundException("Season not found");
+    const ready = season.episodes.filter((episode) => episodeReadyToPublish(episode));
+    if (!ready.length) {
+      throw new BadRequestException("No ready drafts. Upload a file and wait for encode (or paste a video URL).");
+    }
+    await this.prisma.episode.updateMany({
+      where: { id: { in: ready.map((episode) => episode.id) } },
+      data: { publish: PublishStatus.PUBLISHED }
+    });
+    const first = ready[0];
+    const href = ready.length === 1 ? `/watch/${first.id}` : `/title/${season.title.slug}`;
+    const body =
+      ready.length === 1
+        ? `Episode ${first.number} is up: ${first.name}`
+        : `Season ${season.number}: ${ready.length} new episodes are on Anemi.`;
+    await this.community.notifyFollowers(season.title.id, season.title.name, body, href);
+    return {
+      seasonId: season.id,
+      published: ready.length,
+      skipped: season.episodes.length - ready.length
+    };
+  }
+
   async deleteEpisode(id: string) {
     const episode = await this.prisma.episode.findUnique({ where: { id } });
     if (!episode) throw new NotFoundException("Episode not found");
@@ -598,13 +756,17 @@ export class AdminService {
   }
 
   async updateEpisode(id: string, dto: UpsertEpisodeDto) {
-    const episode = await this.prisma.episode.findUnique({ where: { id } });
+    const episode = await this.prisma.episode.findUnique({
+      where: { id },
+      include: { season: { include: { title: { select: { id: true, name: true } } } } }
+    });
     if (!episode) throw new NotFoundException("Episode not found");
     try {
-      return await this.prisma.episode.update({
+      const next = await this.prisma.episode.update({
         where: { id },
         data: {
           name: dto.name,
+          ...(dto.kind ? { kind: dto.kind } : {}),
           ...(dto.number ? { number: dto.number } : {}),
           videoUrl: dto.videoUrl,
           durationSec: dto.durationSec,
@@ -620,6 +782,18 @@ export class AdminService {
           ...(dto.subtitleUrl !== undefined ? { subtitleUrl: dto.subtitleUrl || null } : {})
         }
       });
+      if (
+        dto.publish === PublishStatus.PUBLISHED &&
+        episode.publish !== PublishStatus.PUBLISHED
+      ) {
+        await this.community.notifyFollowers(
+          episode.season.title.id,
+          episode.season.title.name,
+          `Episode ${episode.number} is up: ${next.name}`,
+          `/watch/${next.id}`
+        );
+      }
+      return next;
     } catch (err) {
       if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === "P2002") {
         throw new ConflictException("That episode number already has this Sub/Dub language. Pick another language.");
@@ -715,9 +889,11 @@ export class AdminService {
 
   async uploadSource(
     episodeId: string,
-    file?: { buffer: Buffer; mimetype: string; originalname: string }
+    file?: { path?: string; buffer?: Buffer; mimetype: string; originalname: string }
   ) {
-    if (!file?.buffer?.length) throw new BadRequestException("Choose a video file");
+    if (!file) throw new BadRequestException("Choose a video file");
+    const onDisk = Boolean(file.path);
+    if (!onDisk && !file.buffer?.length) throw new BadRequestException("Choose a video file");
     const episode = await this.prisma.episode.findUnique({ where: { id: episodeId } });
     if (!episode) throw new NotFoundException("Episode not found");
     const allowed = ["video/mp4", "video/webm", "video/quicktime", "application/octet-stream"];
@@ -725,13 +901,129 @@ export class AdminService {
       throw new BadRequestException("Upload an mp4, webm, or mov file you own or license");
     }
     const dest = join(episodeDir(episodeId), "source.mp4");
-    await writeFile(dest, file.buffer);
+    if (onDisk && file.path && file.path !== dest) await copyFile(file.path, dest);
+    if (!onDisk && file.buffer) await writeFile(dest, file.buffer);
     await this.prisma.episode.update({
       where: { id: episodeId },
       data: { encodeStatus: "queued", encodeError: null }
     });
     await this.encode.enqueue(episodeId);
     return { ok: true, encodeStatus: "queued" };
+  }
+
+  async uploadPack(
+    titleId: string,
+    seasonId: string | undefined,
+    files: { path?: string; mimetype: string; originalname: string }[]
+  ) {
+    if (!files?.length) throw new BadRequestException("Choose one or more video files");
+    const title = await this.prisma.title.findUnique({
+      where: { id: titleId },
+      include: { seasons: { orderBy: { number: "asc" } } }
+    });
+    if (!title) throw new NotFoundException("Title not found");
+    const season = seasonId ? title.seasons.find((row) => row.id === seasonId) : title.seasons[0];
+    if (!season) throw new BadRequestException("Add a season first");
+    const results: { name: string; episodeId?: string; number?: number; status: string; reason?: string }[] = [];
+    for (const file of files) {
+      const parsed = parseEpisodeFilename(file.originalname);
+      if (!parsed) {
+        results.push({ name: file.originalname, status: "skipped", reason: "Could not read episode number from the filename" });
+        continue;
+      }
+      try {
+        const existing = await this.prisma.episode.findUnique({
+          where: {
+            seasonId_number_audioKind_language: {
+              seasonId: season.id,
+              number: parsed.number,
+              audioKind: parsed.audioKind,
+              language: ""
+            }
+          }
+        });
+        const episode =
+          existing ??
+          (await this.addEpisode(titleId, {
+            seasonId: season.id,
+            number: parsed.number,
+            name: `Episode ${parsed.number}`,
+            audioKind: parsed.audioKind,
+            publish: "DRAFT"
+          }));
+        await this.uploadSource(episode.id, file);
+        results.push({
+          name: file.originalname,
+          episodeId: episode.id,
+          number: parsed.number,
+          status: existing ? "updated" : "created"
+        });
+      } catch (error) {
+        results.push({
+          name: file.originalname,
+          status: "skipped",
+          reason: error instanceof Error ? error.message : "Upload failed"
+        });
+      } finally {
+        if (file.path?.startsWith(packDir())) await unlink(file.path).catch(() => undefined);
+      }
+    }
+    return {
+      seasonId: season.id,
+      queued: results.filter((row) => row.status === "created" || row.status === "updated").length,
+      created: results.filter((row) => row.status === "created").length,
+      updated: results.filter((row) => row.status === "updated").length,
+      skipped: results.filter((row) => row.status === "skipped").length,
+      results
+    };
+  }
+
+  async listInbox(relative = "") {
+    const dir = resolveUnderRoot(inboxRoot(), relative);
+    let entries;
+    try {
+      entries = await readdir(dir, { withFileTypes: true });
+    } catch {
+      throw new BadRequestException("Inbox folder not found");
+    }
+    const folders: { name: string; path: string }[] = [];
+    const files: { name: string; path: string; bytes: number }[] = [];
+    for (const entry of entries) {
+      if (entry.name.startsWith(".")) continue;
+      const child = join(dir, entry.name);
+      const path = pathRelative(inboxRoot(), child).replace(/\\/g, "/");
+      if (entry.isDirectory()) {
+        folders.push({ name: entry.name, path });
+        continue;
+      }
+      if (!entry.isFile() || !VIDEO_NAME.test(entry.name)) continue;
+      const info = await stat(child).catch(() => null);
+      files.push({ name: entry.name, path, bytes: info?.size ?? 0 });
+    }
+    folders.sort((a, b) => a.name.localeCompare(b.name));
+    files.sort((a, b) => a.name.localeCompare(b.name));
+    return {
+      root: inboxRoot(),
+      path: pathRelative(inboxRoot(), dir).replace(/\\/g, "/"),
+      folders,
+      files
+    };
+  }
+
+  async importInbox(titleId: string, dto: ImportInboxDto) {
+    const dir = resolveUnderRoot(inboxRoot(), dto.path);
+    const info = await stat(dir).catch(() => null);
+    if (!info?.isDirectory()) throw new BadRequestException("Choose a folder inside the inbox");
+    const files = (await readdir(dir, { withFileTypes: true }))
+      .filter((entry) => entry.isFile() && VIDEO_NAME.test(entry.name))
+      .map((entry) => ({
+        path: join(dir, entry.name),
+        originalname: entry.name,
+        mimetype: "application/octet-stream"
+      }));
+    if (!files.length) throw new BadRequestException("No video files in that folder");
+    const result = await this.uploadPack(titleId, dto.seasonId, files);
+    return result;
   }
 
   private async requireTitle(id: string) {

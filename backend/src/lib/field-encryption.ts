@@ -1,7 +1,11 @@
 import { createCipheriv, createDecipheriv, createHash, randomBytes } from "node:crypto";
 
+export function fieldEncryptionKeySource() {
+  return process.env.MFA_SECRET?.trim() || process.env.JWT_SECRET || "anemi-dev";
+}
+
 function key() {
-  return createHash("sha256").update(process.env.JWT_SECRET ?? "anemi-dev").digest();
+  return createHash("sha256").update(fieldEncryptionKeySource()).digest();
 }
 
 export function encryptField(plain: string): string {

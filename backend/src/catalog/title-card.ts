@@ -8,6 +8,7 @@ export const titleCard = {
   type: true,
   status: true,
   name: true,
+  nameJa: true,
   synopsis: true,
   year: true,
   hue: true,
@@ -25,7 +26,7 @@ export const titleCard = {
     orderBy: { number: "asc" as const },
     select: {
       number: true,
-      episodes: { where: published, select: { id: true, audioKind: true, airDate: true } }
+      episodes: { where: published, select: { id: true, audioKind: true, airDate: true, videoUrl: true } }
     }
   }
 } satisfies Prisma.TitleSelect;
@@ -40,7 +41,7 @@ export function mapTitle<
     genres: { genre: { slug: string; name: string } }[];
     scoreSum?: number;
     scoreCount?: number;
-    seasons?: { episodes?: { id: string; audioKind?: string; airDate?: Date | string | null }[] }[];
+    seasons?: { episodes?: { id: string; audioKind?: string; airDate?: Date | string | null; videoUrl?: string | null }[] }[];
   }
 >(row: T) {
   const episodes = row.seasons?.flatMap((season) => season.episodes ?? []) ?? [];

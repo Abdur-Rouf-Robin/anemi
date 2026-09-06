@@ -12,4 +12,5 @@ export type JwtPayload = {
   email: string;
   displayName: string;
   role: Role;
+  ver?: number;
 };

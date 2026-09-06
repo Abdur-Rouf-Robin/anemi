@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 
 import { WatchDesk } from "@/components/watch-desk";
 import { getEpisode, getProgress, getRelated } from "@/lib/api";
+import { absoluteUrl } from "@/lib/site-url";
 
 export async function generateMetadata({
   params
@@ -11,8 +12,16 @@ export async function generateMetadata({
 }): Promise<Metadata> {
   const { episodeId } = await params;
   const data = await getEpisode(episodeId);
-  if (!data) return { title: "Watch" };
-  return { title: `${data.title.name} · ${data.episode.name}` };
+  if (!data) notFound();
+  const title = `${data.title.name} · ${data.episode.name}`;
+  return {
+    title,
+    openGraph: {
+      title,
+      type: "video.episode",
+      url: absoluteUrl(`/watch/${episodeId}`)
+    }
+  };
 }
 
 export default async function WatchPage({

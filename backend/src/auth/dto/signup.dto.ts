@@ -1,4 +1,4 @@
-import { IsEmail, IsString, Matches, MaxLength, MinLength } from "class-validator";
+import { IsEmail, IsOptional, IsString, Matches, MaxLength, MinLength } from "class-validator";
 
 export class SignupDto {
   @IsEmail()
@@ -17,4 +17,9 @@ export class SignupDto {
     message: "Use at least 10 characters with a letter and a number"
   })
   password!: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(80)
+  inviteCode?: string;
 }

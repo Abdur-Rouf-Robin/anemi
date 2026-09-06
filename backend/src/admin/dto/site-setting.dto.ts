@@ -1,5 +1,25 @@
 import { Type } from "class-transformer";
-import { IsArray, IsBoolean, IsObject, IsOptional, IsString, MaxLength, ValidateNested } from "class-validator";
+import { IsArray, IsBoolean, IsIn, IsObject, IsOptional, IsString, MaxLength, ValidateNested } from "class-validator";
+
+class HomeCollectionDto {
+  @IsOptional()
+  @IsString()
+  id?: string;
+
+  @IsString()
+  @MaxLength(80)
+  name!: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(80)
+  slug?: string;
+
+  @IsOptional()
+  @IsArray()
+  @IsString({ each: true })
+  titleIds?: string[];
+}
 
 class HomeConfigDto {
   @IsOptional()
@@ -20,6 +40,12 @@ class HomeConfigDto {
   @IsOptional()
   @IsString()
   watchNextTitleId?: string | null;
+
+  @IsOptional()
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => HomeCollectionDto)
+  collections?: HomeCollectionDto[];
 
   @IsOptional()
   @IsObject()
@@ -50,6 +76,10 @@ export class SiteSettingDto {
   @IsString()
   @MaxLength(4000)
   communityGuidelines?: string;
+
+  @IsOptional()
+  @IsIn(["open", "invite", "closed"])
+  signupMode?: "open" | "invite" | "closed";
 
   @IsOptional()
   @ValidateNested()

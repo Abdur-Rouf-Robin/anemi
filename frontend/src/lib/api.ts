@@ -5,6 +5,7 @@ import type {
   EpisodeCard,
   HomePayload,
   LibraryPayload,
+  Playlist,
   Preferences,
   TitleCard,
   TitleDetail,
@@ -32,7 +33,8 @@ function emptyHome(): HomePayload {
     charts: { day: [], week: [], month: [] },
     featuredGenres: [],
     homeSections: {},
-    watchNextTitle: null
+    watchNextTitle: null,
+    collections: []
   };
 }
 
@@ -69,6 +71,14 @@ export async function getLibrary(): Promise<LibraryPayload | null> {
   return fetchJson<LibraryPayload>("/library", true);
 }
 
+export async function getPlaylists(): Promise<Playlist[] | null> {
+  return fetchJson<Playlist[]>("/playlists", true);
+}
+
+export async function getPlaylist(id: string): Promise<Playlist | null> {
+  return fetchJson<Playlist>(`/playlists/${id}`, true, 0);
+}
+
 export async function getProgress(episodeId: string) {
   return fetchJson<{ positionSec: number; durationSec: number; completed: boolean } | null>(
     `/library/progress/${episodeId}`,
@@ -77,16 +87,21 @@ export async function getProgress(episodeId: string) {
 }
 
 export async function getSessionUser() {
-  return fetchJson<{ user: { id: string; displayName: string; role: string } | null }>(
-    "/auth/me",
-    true
-  );
+  return fetchJson<{
+    user: { id: string; displayName: string; role: string; mfaEnabled?: boolean } | null;
+  }>("/auth/me", true);
 }
 
 export async function getHome(): Promise<HomePayload> {
   const live = await fetchJson<HomePayload>("/catalog/home", false, 5);
   if (live) return live;
   return allowDemoFallback() ? demoHome() : emptyHome();
+}
+
+export async function getHomeState(): Promise<{ home: HomePayload; live: boolean }> {
+  const live = await fetchJson<HomePayload>("/catalog/home", false, 5);
+  if (live) return { home: live, live: true };
+  return { home: allowDemoFallback() ? demoHome() : emptyHome(), live: false };
 }
 
 export async function getDiscover() {
@@ -119,6 +134,10 @@ export async function getRelated(slug: string): Promise<TitleCard[]> {
   return data?.items ?? [];
 }
 
+export async function getCollection(slug: string) {
+  return fetchJson<{ name: string; slug: string; items: TitleCard[] }>(`/catalog/collections/${slug}`);
+}
+
 export async function getTitles(search: {
   q?: string;
   type?: string;
@@ -129,6 +148,7 @@ export async function getTitles(search: {
   season?: string;
   audio?: string;
   letter?: string;
+  studio?: string;
   take?: string;
   skip?: string;
 }): Promise<{ items: TitleCard[]; total: number }> {
@@ -165,13 +185,26 @@ export async function getSchedule() {
   return fetchJson<{ days: { date: string; items: EpisodeCard[] }[] }>("/catalog/schedule");
 }
 
-export async function getCommunityPosts(category?: string) {
-  const qs = category ? `?category=${category}` : "";
+export async function getCommunityPosts(category?: string, take?: number) {
+  const params = new URLSearchParams();
+  if (category) params.set("category", category);
+  if (take) params.set("take", String(take));
+  const qs = params.toString();
   return (
     (await fetchJson<
       { id: string; category: string; title: string; body: string; createdAt: string; displayName: string }[]
-    >(`/community/posts${qs}`)) ?? []
+    >(`/community/posts${qs ? `?${qs}` : ""}`)) ?? []
   );
+}
+
+export async function getStudios() {
+  return (
+    (await fetchJson<{ name: string; slug: string; count: number }[]>("/catalog/studios")) ?? []
+  );
+}
+
+export async function getStudio(slug: string) {
+  return fetchJson<{ name: string; slug: string; items: TitleCard[] }>(`/catalog/studios/${slug}`);
 }
 
 export async function getPreferences(): Promise<Preferences> {
@@ -187,7 +220,7 @@ export async function getPreferences(): Promise<Preferences> {
 }
 
 export async function getEpisode(id: string): Promise<WatchPayload | null> {
-  const live = await fetchJson<CatalogEpisodeResponse>(`/catalog/episodes/${id}`);
+  const live = await fetchJson<CatalogEpisodeResponse>(`/catalog/episodes/${id}`, false, 0);
   if (live) return mapCatalogEpisode(live);
   const demo = allowDemoFallback() ? episodeById(id) : null;
   if (!demo) return null;

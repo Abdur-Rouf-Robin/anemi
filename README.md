@@ -59,7 +59,7 @@ Upload a `.vtt` on an episode in admin to turn captions on. Sub and Dub are sepa
 3. Install ffmpeg. Put Caddy or nginx in front (`deploy/Caddyfile` or `deploy/nginx.conf.example`) so the site is HTTPS.
 4. `bash scripts/prod.sh` then start API + UI with `NODE_ENV=production`. Production builds do not fall back to the demo catalog if the API is down.
 5. Sign in, open `/account`, change the admin password (10+ characters with a letter and a number). Staff must keep MFA on to use `/admin`.
-6. Replace demo videos in `/admin/titles` with files you own or license. Upload poster, backdrop, and captions there.
+6. Upload files you own or license in `/admin/titles`. Seed no longer attaches W3C demo trailers; episodes without a file show “No file yet.”
 7. `npm run backup` (Postgres dump + `data/media`). Run it on a schedule.
 
 Do not ship with the first-seed admin password.

@@ -12,6 +12,7 @@ export type CatalogEpisodeResponse = {
   videoUrl: string | null;
   audioKind?: "SUB" | "DUB";
   language?: string | null;
+  kind?: string | null;
   captions?: { language: string; url: string }[];
   season: {
     number: number;
@@ -23,6 +24,7 @@ export type CatalogEpisodeResponse = {
       durationSec: number | null;
       audioKind?: "SUB" | "DUB";
       language?: string | null;
+      kind?: string | null;
       subtitleUrl?: string | null;
       videoUrl?: string | null;
       captions?: { language: string; url: string }[];

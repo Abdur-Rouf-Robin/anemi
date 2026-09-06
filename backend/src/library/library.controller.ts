@@ -64,4 +64,14 @@ export class LibraryController {
   clearList(@CurrentUser() user: AuthUser, @Param("titleId") titleId: string) {
     return this.library.clearList(user.id, titleId);
   }
+
+  @Delete("history")
+  clearHistory(@CurrentUser() user: AuthUser) {
+    return this.library.clearHistory(user.id);
+  }
+
+  @Delete("history/:episodeId")
+  removeHistory(@CurrentUser() user: AuthUser, @Param("episodeId") episodeId: string) {
+    return this.library.removeHistory(user.id, episodeId);
+  }
 }

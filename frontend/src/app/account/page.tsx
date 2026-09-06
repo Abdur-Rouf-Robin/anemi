@@ -4,36 +4,53 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 
+import { MfaQr } from "@/components/mfa-qr";
 import { PageIntro } from "@/components/page-intro";
-import { api, getMe, type Me } from "@/lib/client-api";
+import { useSession } from "@/components/session-provider";
+import { api, type Me } from "@/lib/client-api";
 
 export default function AccountPage() {
   const router = useRouter();
-  const [user, setUser] = useState<Me | null>(null);
-  const [mode, setMode] = useState<"login" | "signup">("login");
+  const session = useSession();
+  const user = session.user;
+  const access = session.access;
+  const [mode, setMode] = useState<"login" | "signup" | "forgot">("login");
+  const [inviteCode, setInviteCode] = useState("");
   const [mfaToken, setMfaToken] = useState("");
   const [error, setError] = useState("");
+  const [note, setNote] = useState("");
   const [pending, setPending] = useState(false);
-  const [setup, setSetup] = useState<{ secret: string; otpauthUrl: string } | null>(null);
+  const [setup, setSetup] = useState<{ secret: string; otpauthUrl: string; setupToken: string } | null>(null);
   const [mfaRequired, setMfaRequired] = useState(false);
 
   async function refresh() {
-    const data = await getMe();
-    setUser(data.user);
+    await session.refresh();
   }
 
   useEffect(() => {
-    refresh().catch(() => setUser(null));
     if (typeof window !== "undefined") {
       const params = new URLSearchParams(window.location.search);
       if (params.get("mfa") === "required") setMfaRequired(true);
       if (params.get("mode") === "signup") setMode("signup");
+      if (params.get("mode") === "forgot") setMode("forgot");
+      const invite = params.get("invite")?.trim();
+      if (invite) {
+        setInviteCode(invite);
+        setMode("signup");
+      }
     }
   }, []);
+
+  useEffect(() => {
+    if (access?.signupMode === "closed" && (mode === "signup" || mode === "forgot")) {
+      setMode("login");
+    }
+  }, [access, mode]);
 
   async function onSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setError("");
+    setNote("");
     setPending(true);
     const form = new FormData(event.currentTarget);
     try {
@@ -42,19 +59,33 @@ export default function AccountPage() {
           method: "POST",
           body: JSON.stringify({ mfaToken, code: String(form.get("code") ?? "") })
         });
-        setUser(result.user);
+        session.setUser(result.user);
         setMfaToken("");
         router.refresh();
         return;
       }
-      const path = mode === "login" ? "/auth/login" : "/auth/signup";
+      if (mode === "forgot") {
+        await api("/auth/forgot", {
+          method: "POST",
+          body: JSON.stringify({ email: String(form.get("email") ?? "") })
+        });
+        setNote("If that account exists, a reset link is on the way.");
+        return;
+      }
+      const signupAllowed = access?.signupMode !== "closed";
+      const path = mode === "signup" && signupAllowed ? "/auth/signup" : "/auth/login";
       const email = String(form.get("email") ?? "");
       const password = String(form.get("password") ?? "");
       const result = await api<{ user?: Me; mfaRequired?: boolean; mfaToken?: string }>(path, {
         method: "POST",
         body: JSON.stringify(
-          mode === "signup"
-            ? { email, password, displayName: String(form.get("displayName") ?? "") }
+          path === "/auth/signup"
+            ? {
+                email,
+                password,
+                displayName: String(form.get("displayName") ?? ""),
+                inviteCode: inviteCode || undefined
+              }
             : { email, password }
         )
       });
@@ -62,7 +93,7 @@ export default function AccountPage() {
         setMfaToken(result.mfaToken);
         return;
       }
-      if (result.user) setUser(result.user);
+      if (result.user) session.setUser(result.user);
       router.refresh();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Could not sign in");
@@ -73,14 +104,14 @@ export default function AccountPage() {
 
   async function logout() {
     await api("/auth/logout", { method: "POST" });
-    setUser(null);
+    session.setUser(null);
     router.refresh();
   }
 
   async function beginMfa() {
     setError("");
     try {
-      setSetup(await api<{ secret: string; otpauthUrl: string }>("/auth/mfa/begin", { method: "POST" }));
+      setSetup(await api<{ secret: string; otpauthUrl: string; setupToken: string }>("/auth/mfa/begin", { method: "POST" }));
     } catch (err) {
       setError(err instanceof Error ? err.message : "Could not start MFA");
     }
@@ -93,7 +124,7 @@ export default function AccountPage() {
     try {
       await api("/auth/mfa/confirm", {
         method: "POST",
-        body: JSON.stringify({ code: String(form.get("code") ?? "") })
+        body: JSON.stringify({ code: String(form.get("code") ?? ""), setupToken: setup?.setupToken })
       });
       setSetup(null);
       await refresh();
@@ -117,6 +148,14 @@ export default function AccountPage() {
     }
   }
 
+  if (user === undefined) {
+    return (
+      <main className="page-shell max-w-lg py-10 pb-16">
+        <p className="text-sm text-muted">Loading account…</p>
+      </main>
+    );
+  }
+
   if (user) {
     return (
       <main className="page-shell max-w-lg py-10 pb-16">
@@ -124,6 +163,9 @@ export default function AccountPage() {
         <div className="mt-8 flex flex-wrap gap-3">
           <Link href="/library" className="rounded-full bg-accent px-5 py-2 text-sm font-semibold text-accent-ink">
             Library
+          </Link>
+          <Link href="/notifications" className="rounded-full bg-elevated px-5 py-2 text-sm ring-1 ring-white/10">
+            Notifications
           </Link>
           <Link href="/settings" className="rounded-full bg-elevated px-5 py-2 text-sm ring-1 ring-white/10">
             Settings
@@ -154,12 +196,12 @@ export default function AccountPage() {
                 body: JSON.stringify({ displayName: String(form.get("displayName") ?? "") })
               })
                 .then((result) => {
-                  setUser(result.user);
+                  session.setUser(result.user);
                   setError("");
                 })
                 .catch((err: Error) => setError(err.message));
             }}
-            className="mt-3 flex gap-2"
+            className="mt-3 flex flex-col gap-2 sm:flex-row"
           >
             <input
               name="displayName"
@@ -218,13 +260,7 @@ export default function AccountPage() {
           ) : null}
           {setup ? (
             <form onSubmit={(event) => void confirmMfa(event)} className="mt-4 space-y-3">
-              <img
-                src={`https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=${encodeURIComponent(setup.otpauthUrl)}`}
-                alt="Scan this QR code in your authenticator app"
-                width={180}
-                height={180}
-                className="rounded-xl bg-white p-2"
-              />
+              <MfaQr otpauthUrl={setup.otpauthUrl} />
               <p className="break-all text-xs text-muted">Secret: {setup.secret}</p>
               <a href={setup.otpauthUrl} className="block text-sm text-accent">
                 Open in authenticator
@@ -248,17 +284,35 @@ export default function AccountPage() {
     );
   }
 
+  const signupMode = access?.signupMode ?? "invite";
+  const canSignup = signupMode !== "closed";
+  const formMode = !canSignup && mode === "signup" ? "login" : mode;
+
   return (
     <main className="page-shell max-w-lg py-10 pb-16">
       <PageIntro
         kicker="Account"
-        title={mfaToken ? "Authenticator code" : mode === "login" ? "Sign in" : "Create account"}
+        title={
+          mfaToken
+            ? "Authenticator code"
+            : formMode === "login"
+              ? "Sign in"
+              : formMode === "forgot"
+                ? "Reset password"
+                : "Create account"
+        }
         blurb={
           mfaToken
             ? "Enter the 6-digit code from your app."
-            : mode === "signup"
-              ? "Create an account to save progress and lists."
-              : "Sign in to continue watching."
+            : formMode === "signup"
+              ? signupMode === "invite"
+                ? "You need an invite code from staff."
+                : "Create an account to save progress and lists."
+              : formMode === "forgot"
+                ? access?.resetEnabled
+                  ? "We will email a reset link if that account exists."
+                  : "Ask a site admin to reset your password. SMTP is not set."
+                : "Sign in to continue watching."
         }
       />
       {!mfaToken ? (
@@ -266,17 +320,19 @@ export default function AccountPage() {
           <button
             type="button"
             onClick={() => setMode("login")}
-            className={mode === "login" ? "rounded-full bg-accent px-3 py-1.5 text-sm font-semibold text-accent-ink" : "rounded-full bg-elevated px-3 py-1.5 text-sm text-muted"}
+            className={formMode === "login" ? "rounded-full bg-accent px-3 py-1.5 text-sm font-semibold text-accent-ink" : "rounded-full bg-elevated px-3 py-1.5 text-sm text-muted"}
           >
             Sign in
           </button>
-          <button
-            type="button"
-            onClick={() => setMode("signup")}
-            className={mode === "signup" ? "rounded-full bg-accent px-3 py-1.5 text-sm font-semibold text-accent-ink" : "rounded-full bg-elevated px-3 py-1.5 text-sm text-muted"}
-          >
-            Sign up
-          </button>
+          {canSignup ? (
+            <button
+              type="button"
+              onClick={() => setMode("signup")}
+              className={formMode === "signup" ? "rounded-full bg-accent px-3 py-1.5 text-sm font-semibold text-accent-ink" : "rounded-full bg-elevated px-3 py-1.5 text-sm text-muted"}
+            >
+              Sign up
+            </button>
+          ) : null}
         </div>
       ) : null}
       <form onSubmit={(event) => void onSubmit(event)} className="card-panel mt-6 space-y-3 p-4">
@@ -284,18 +340,36 @@ export default function AccountPage() {
           <input name="code" inputMode="numeric" pattern="\d{6}" required placeholder="6-digit code" className="h-11 w-full rounded-xl bg-elevated px-3 text-sm ring-1 ring-white/10" />
         ) : (
           <>
-            {mode === "signup" ? (
+            {formMode === "signup" ? (
               <input name="displayName" required minLength={2} placeholder="Display name" className="h-11 w-full rounded-xl bg-elevated px-3 text-sm ring-1 ring-white/10" />
             ) : null}
             <input name="email" type="email" required placeholder="Email" className="h-11 w-full rounded-xl bg-elevated px-3 text-sm ring-1 ring-white/10" />
-            <input name="password" type="password" required minLength={mode === "signup" ? 10 : 8} placeholder={mode === "signup" ? "Password (10+ with a letter and a number)" : "Password"} className="h-11 w-full rounded-xl bg-elevated px-3 text-sm ring-1 ring-white/10" />
+            {formMode === "signup" && signupMode === "invite" ? (
+              <input
+                name="inviteCode"
+                value={inviteCode}
+                onChange={(event) => setInviteCode(event.target.value)}
+                required
+                placeholder="Invite code"
+                className="h-11 w-full rounded-xl bg-elevated px-3 text-sm ring-1 ring-white/10"
+              />
+            ) : null}
+            {formMode !== "forgot" ? (
+              <input name="password" type="password" required minLength={formMode === "signup" ? 10 : 8} placeholder={formMode === "signup" ? "Password (10+ with a letter and a number)" : "Password"} className="h-11 w-full rounded-xl bg-elevated px-3 text-sm ring-1 ring-white/10" />
+            ) : null}
           </>
         )}
         {error ? <p className="text-sm text-red-400">{error}</p> : null}
-        <button type="submit" disabled={pending} className="w-full rounded-full bg-accent py-2.5 text-sm font-semibold text-accent-ink disabled:opacity-60">
-          {pending ? "Please wait…" : mfaToken ? "Verify" : mode === "login" ? "Sign in" : "Create account"}
+        {note ? <p className="text-sm text-muted">{note}</p> : null}
+        <button type="submit" disabled={pending || (formMode === "forgot" && access && !access.resetEnabled)} className="w-full rounded-full bg-accent py-2.5 text-sm font-semibold text-accent-ink disabled:opacity-60">
+          {pending ? "Please wait…" : mfaToken ? "Verify" : formMode === "login" ? "Sign in" : formMode === "forgot" ? "Send reset link" : "Create account"}
         </button>
       </form>
+      {!mfaToken && formMode === "login" ? (
+        <button type="button" onClick={() => setMode("forgot")} className="mt-4 text-sm text-muted hover:text-ink">
+          Forgot password
+        </button>
+      ) : null}
     </main>
   );
 }

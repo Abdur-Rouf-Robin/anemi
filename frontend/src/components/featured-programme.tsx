@@ -43,7 +43,7 @@ export function FeaturedProgramme({ items }: { items: TitleCard[] }) {
               Programme {String(index + 1).padStart(2, "0")}
               {title.status === "AIRING" ? " · Now showing" : ""}
             </p>
-            <h2 className="mt-2 text-3xl font-semibold tracking-tight sm:text-4xl">{title.name}</h2>
+            <h2 className="mt-2 text-2xl font-semibold tracking-tight sm:text-4xl">{title.name}</h2>
             <dl className="mt-4 grid grid-cols-2 gap-x-6 gap-y-2 text-sm sm:grid-cols-4">
               {[
                 ["Format", title.type === "SERIES" ? "Series" : title.type],
@@ -59,12 +59,18 @@ export function FeaturedProgramme({ items }: { items: TitleCard[] }) {
             </dl>
             {title.synopsis ? <p className="mt-4 line-clamp-4 max-w-2xl text-sm text-muted">{title.synopsis}</p> : null}
             <div className="mt-6 flex flex-wrap items-center gap-2">
-              <Link
-                href={playId ? `/watch/${playId}` : `/title/${title.slug}`}
-                className="rounded-full bg-accent px-6 py-2.5 text-sm font-semibold text-accent-ink"
-              >
-                Watch
-              </Link>
+              {playId ? (
+                <Link
+                  href={`/watch/${playId}`}
+                  className="rounded-full bg-accent px-6 py-2.5 text-sm font-semibold text-accent-ink"
+                >
+                  Watch
+                </Link>
+              ) : (
+                <span className="rounded-full bg-elevated px-6 py-2.5 text-sm text-muted ring-1 ring-white/10">
+                  Not available yet
+                </span>
+              )}
               {title.id ? <TitleActions titleId={title.id} compact /> : null}
             </div>
             {queue.length > 1 ? (

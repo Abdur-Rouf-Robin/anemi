@@ -9,8 +9,10 @@ import { ShareButton } from "@/components/share-button";
 import { TitleActions } from "@/components/title-actions";
 import { VoteWidget } from "@/components/vote-widget";
 import { getRelated, getTitle } from "@/lib/api";
+import { absoluteUrl } from "@/lib/site-url";
 import { t } from "@/lib/i18n";
 import { requestLocale } from "@/lib/request-locale";
+import { displayTitle, studioSlug } from "@/lib/display-title";
 import { firstEpisodeId, formatAirDate } from "@/lib/utils";
 
 const TYPE_LABEL: Record<string, string> = {
@@ -30,8 +32,18 @@ const STATUS_LABEL: Record<string, string> = {
 export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }): Promise<Metadata> {
   const { slug } = await params;
   const title = await getTitle(slug);
-  if (!title) return { title: "Title" };
-  return { title: title.name, description: title.synopsis };
+  if (!title) notFound();
+  return {
+    title: title.name,
+    description: title.synopsis,
+    openGraph: {
+      title: title.name,
+      description: title.synopsis,
+      type: "video.tv_show",
+      url: absoluteUrl(`/title/${slug}`),
+      images: title.posterUrl ? [absoluteUrl(title.posterUrl)] : undefined
+    }
+  };
 }
 
 export default async function TitlePage({ params }: { params: Promise<{ slug: string }> }) {
@@ -45,6 +57,7 @@ export default async function TitlePage({ params }: { params: Promise<{ slug: st
   const playDub = firstEpisodeId(title, "DUB");
   const airLabel = formatAirDate(title.nextAirDate);
   const typeLabel = t(locale, TYPE_LABEL[title.type] ?? title.type);
+  const heading = displayTitle(title, locale);
   const stats = [
     ["Format", typeLabel],
     ["Year", title.year ? String(title.year) : "—"],
@@ -65,28 +78,41 @@ export default async function TitlePage({ params }: { params: Promise<{ slug: st
     <main className="space-y-10 pb-16">
       <section className="relative overflow-hidden">
         <PosterArt
-          name={title.name}
+          name={heading}
           hue={title.hue}
           src={title.backdropUrl || title.posterUrl}
-          className="h-[min(78vh,680px)] w-full"
+          className="h-[min(58vh,480px)] w-full sm:h-[min(78vh,680px)]"
         />
         <div className="absolute inset-0 bg-linear-to-r from-canvas via-canvas/80 to-canvas/15" />
         <div className="absolute inset-0 bg-linear-to-t from-canvas via-transparent to-black/30" />
         <div className="page-shell absolute inset-x-0 bottom-0 flex items-end gap-6 pb-8 sm:pb-12">
           <PosterArt
-            name={title.name}
+            name={heading}
             hue={title.hue}
             src={title.posterUrl || title.backdropUrl}
             className="hidden aspect-2/3 w-36 shrink-0 rounded-2xl shadow-[var(--shadow-card)] ring-1 ring-white/15 sm:block sm:w-44"
           />
           <div className="min-w-0 pb-1">
             <p className="text-xs tracking-[0.18em] text-accent uppercase">{typeLabel}</p>
-            <h1 className="mt-1 text-3xl font-semibold tracking-tight sm:text-5xl">{title.name}</h1>
+            <h1 className="mt-1 text-2xl font-semibold tracking-tight sm:text-5xl">{heading}</h1>
+            {title.nameJa && locale !== "jp" ? (
+              <p className="mt-1 text-sm text-white/60">{title.nameJa}</p>
+            ) : title.nameJa && locale === "jp" && title.name !== heading ? (
+              <p className="mt-1 text-sm text-white/60">{title.name}</p>
+            ) : null}
             <dl className="mt-4 grid max-w-xl grid-cols-2 gap-x-6 gap-y-2 text-sm sm:grid-cols-4">
               {stats.map(([label, value]) => (
                 <div key={label}>
                   <dt className="text-[10px] font-semibold tracking-wider text-white/55 uppercase">{label}</dt>
-                  <dd className="mt-0.5 font-medium text-white">{value}</dd>
+                  <dd className="mt-0.5 font-medium text-white">
+                    {label === "Studio" && title.studio ? (
+                      <Link href={`/studio/${studioSlug(title.studio)}`} className="hover:text-accent">
+                        {title.studio}
+                      </Link>
+                    ) : (
+                      value
+                    )}
+                  </dd>
                 </div>
               ))}
             </dl>

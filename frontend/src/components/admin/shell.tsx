@@ -17,13 +17,26 @@ import {
   Film,
   MessageSquareText,
   AtSign,
-  House
+  House,
+  ScrollText,
+  Ticket
 } from "lucide-react";
 
 import { AccountMenu } from "@/components/account-menu";
 import { ThemeToggle } from "@/components/theme-toggle";
-import { api } from "@/lib/client-api";
+import { useSession } from "@/components/session-provider";
+import { api, type Me } from "@/lib/client-api";
 import { cn } from "@/lib/utils";
+
+const adminOnly = new Set([
+  "/admin/home",
+  "/admin/newsletter",
+  "/admin/contact",
+  "/admin/users",
+  "/admin/invites",
+  "/admin/settings",
+  "/admin/audit"
+]);
 
 const groups = [
   {
@@ -51,17 +64,15 @@ const groups = [
     label: "System",
     items: [
       { href: "/admin/users", label: "Users", icon: Users },
+      { href: "/admin/invites", label: "Invites", icon: Ticket },
       { href: "/admin/encodes", label: "Encodes", icon: Film },
+      { href: "/admin/audit", label: "Audit", icon: ScrollText },
       { href: "/admin/settings", label: "Site", icon: Settings }
     ]
   }
 ];
 
 const nav = groups.flatMap((group) => group.items);
-const bar = nav.filter((item) =>
-  ["/admin", "/admin/home", "/admin/titles", "/admin/schedule", "/admin/settings"].includes(item.href)
-);
-const more = nav.filter((item) => !bar.some((link) => link.href === item.href));
 
 function isActive(path: string, item: (typeof nav)[number]) {
   return item.exact ? path === item.href : path === item.href || path.startsWith(`${item.href}/`);
@@ -100,7 +111,7 @@ function AdminTitleSearch() {
   }, []);
 
   return (
-    <div ref={box} className="relative mx-auto hidden w-full max-w-xs md:block">
+    <div ref={box} className="relative mx-2 min-w-0 max-w-xs flex-1 sm:mx-auto">
       <input
         value={q}
         onChange={(event) => {
@@ -135,24 +146,43 @@ function AdminTitleSearch() {
   );
 }
 
+function visibleGroups(role: Me["role"] | null) {
+  if (role === "ADMIN") return groups;
+  return groups
+    .map((group) => ({
+      ...group,
+      items: group.items.filter((item) => !adminOnly.has(item.href))
+    }))
+    .filter((group) => group.items.length);
+}
+
 export function AdminShell({ children }: { children: React.ReactNode }) {
   const path = usePathname();
-  const moreOpen = more.some((item) => isActive(path, item));
+  const { user } = useSession();
+  const role = user?.role ?? null;
+
+  const shown = visibleGroups(role);
+  const shownNav = shown.flatMap((group) => group.items);
+  const shownBar = shownNav.filter((item) =>
+    ["/admin", "/admin/home", "/admin/titles", "/admin/schedule", "/admin/settings"].includes(item.href)
+  );
+  const shownMore = shownNav.filter((item) => !shownBar.some((link) => link.href === item.href));
+  const moreOpen = shownMore.some((item) => isActive(path, item));
 
   return (
     <div className="min-h-dvh">
-      <header className="sticky top-0 z-40 border-b border-white/6 bg-canvas/75 backdrop-blur-xl">
-        <div className="flex h-16 items-center gap-4 px-4 sm:px-6">
-          <Link href="/admin" className="flex shrink-0 items-center gap-2.5">
+      <header className="sticky top-0 z-40 border-b border-white/6 bg-canvas/75 pt-[env(safe-area-inset-top,0px)] backdrop-blur-xl">
+        <div className="flex h-14 items-center gap-2 px-3 sm:h-16 sm:gap-4 sm:px-6">
+          <Link href="/admin" className="flex shrink-0 items-center gap-2 sm:gap-2.5">
             <span className="grid size-8 place-items-center rounded-lg bg-accent text-sm font-bold text-accent-ink shadow-[0_8px_20px_color-mix(in_oklch,var(--color-accent)_45%,transparent)]">
               A
             </span>
-            <span className="text-[17px] font-semibold tracking-tight">
+            <span className="hidden text-[17px] font-semibold tracking-tight min-[420px]:inline">
               anemi <span className="font-medium text-muted">CMS</span>
             </span>
           </Link>
           <nav className="hidden items-center gap-4 text-sm text-muted xl:flex" aria-label="CMS">
-            {bar.map((item) => (
+            {shownBar.map((item) => (
               <Link
                 key={item.href}
                 href={item.href}
@@ -166,7 +196,7 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
                 More
               </summary>
               <div className="card-panel absolute top-8 left-0 z-40 w-44 p-2">
-                {more.map((item) => (
+                {shownMore.map((item) => (
                   <Link
                     key={item.href}
                     href={item.href}
@@ -185,16 +215,17 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
           <div className="ml-auto flex items-center gap-1.5">
             <Link
               href="/"
-              className="rounded-full px-3 py-1.5 text-sm text-muted hover:bg-elevated hover:text-ink"
+              className="rounded-full px-2.5 py-1.5 text-sm text-muted hover:bg-elevated hover:text-ink sm:px-3"
             >
-              View site
+              <span className="sm:hidden">Site</span>
+              <span className="hidden sm:inline">View site</span>
             </Link>
             <ThemeToggle />
             <AccountMenu />
           </div>
         </div>
         <nav className="no-scrollbar flex gap-2 overflow-x-auto border-t border-white/6 px-4 py-2 sm:px-6 xl:hidden" aria-label="CMS sections">
-          {nav.map((item) => (
+          {shownNav.map((item) => (
             <Link
               key={item.href}
               href={item.href}
@@ -212,7 +243,7 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
       <div className="flex">
         <aside className="sticky top-[7rem] hidden h-[calc(100dvh-7rem)] w-60 shrink-0 flex-col border-r border-white/6 bg-surface/40 backdrop-blur-xl lg:flex xl:top-16 xl:h-[calc(100dvh-4rem)]">
           <nav className="flex-1 space-y-6 overflow-y-auto px-3 py-5" aria-label="CMS sidebar">
-            {groups.map((group) => (
+            {shown.map((group) => (
               <div key={group.label}>
                 <p className="px-2 pb-2 text-[11px] font-semibold tracking-[0.14em] text-muted uppercase">{group.label}</p>
                 <ul className="space-y-0.5">
@@ -247,7 +278,7 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
           </div>
         </aside>
         <div className="min-w-0 flex-1">
-          <div className="page-shell py-8 sm:px-8">{children}</div>
+          <div className="page-shell py-5 sm:px-8 sm:py-8">{children}</div>
         </div>
       </div>
     </div>

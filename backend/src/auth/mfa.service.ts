@@ -30,24 +30,24 @@ export class MfaService {
 
   async begin(user: AuthUser) {
     const secret = generateSecret();
-    await this.prisma.user.update({
-      where: { id: user.id },
-      data: { totpSecret: encryptField(secret), mfaEnabled: false }
-    });
+    const setupToken = this.jwt.sign(
+      { sub: user.id, purpose: "mfa-setup", secret: encryptField(secret) },
+      { expiresIn: "15m" }
+    );
     return {
       secret,
+      setupToken,
       otpauthUrl: generateURI({ issuer: "Anemi", label: user.email, secret })
     };
   }
 
-  async confirm(userId: string, code: string) {
-    const row = await this.prisma.user.findUnique({ where: { id: userId } });
-    if (!row?.totpSecret) throw new BadRequestException("Start MFA setup first");
-    const result = await verify({ token: code, secret: decryptField(row.totpSecret) });
+  async confirm(userId: string, code: string, setupToken?: string) {
+    const secret = setupToken ? this.readSetupSecret(userId, setupToken) : await this.existingSecret(userId);
+    const result = await verify({ token: code, secret });
     if (!result.valid) throw new BadRequestException("That code is not valid");
     await this.prisma.user.update({
       where: { id: userId },
-      data: { mfaEnabled: true }
+      data: { totpSecret: encryptField(secret), mfaEnabled: true }
     });
     return { enabled: true };
   }
@@ -71,5 +71,23 @@ export class MfaService {
     if (!row?.totpSecret || !row.mfaEnabled) return false;
     const result = await verify({ token: code, secret: decryptField(row.totpSecret) });
     return result.valid;
+  }
+
+  private readSetupSecret(userId: string, token: string): string {
+    try {
+      const payload = this.jwt.verify<{ sub: string; purpose?: string; secret?: string }>(token);
+      if (payload.purpose !== "mfa-setup" || payload.sub !== userId || !payload.secret) {
+        throw new Error("bad");
+      }
+      return decryptField(payload.secret);
+    } catch {
+      throw new BadRequestException("MFA setup expired. Start again.");
+    }
+  }
+
+  private async existingSecret(userId: string): Promise<string> {
+    const row = await this.prisma.user.findUnique({ where: { id: userId } });
+    if (!row?.totpSecret) throw new BadRequestException("Start MFA setup first");
+    return decryptField(row.totpSecret);
   }
 }

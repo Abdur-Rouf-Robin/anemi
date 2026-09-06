@@ -53,9 +53,14 @@ export function NotificationsBell() {
         <div className="card-panel absolute right-0 z-40 mt-2 w-72 p-2">
           <div className="flex items-center justify-between px-2 py-1">
             <p className="text-xs text-muted">Notifications</p>
-            <button type="button" onClick={() => void markAll()} className="text-xs text-accent">
-              Mark read
-            </button>
+            <div className="flex items-center gap-2">
+              <Link href="/notifications" className="text-xs text-muted hover:text-ink" onClick={() => setOpen(false)}>
+                All
+              </Link>
+              <button type="button" onClick={() => void markAll()} className="text-xs text-accent">
+                Mark read
+              </button>
+            </div>
           </div>
           <ul className="max-h-72 overflow-y-auto">
             {items.length === 0 ? <li className="px-2 py-4 text-sm text-muted">Nothing yet.</li> : null}
@@ -64,7 +69,12 @@ export function NotificationsBell() {
                 <Link
                   href={item.href || "/library"}
                   className={`block rounded-xl px-2 py-2 text-sm hover:bg-elevated ${item.read ? "text-muted" : "text-ink"}`}
-                  onClick={() => setOpen(false)}
+                  onClick={() => {
+                    if (!item.read) {
+                      void api(`/notifications/${item.id}/read`, { method: "PUT" }).catch(() => undefined);
+                    }
+                    setOpen(false);
+                  }}
                 >
                   <span className="font-medium">{item.title}</span>
                   <span className="mt-0.5 block text-xs text-muted">{item.body}</span>

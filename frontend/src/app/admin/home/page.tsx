@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 
 import { AdminButton, AdminCard, AdminHeader, AdminNotice, Field, adminControl } from "@/components/admin/ui";
+import { AdminOnly } from "@/components/admin-only";
 import { api } from "@/lib/client-api";
 import { HOME_SECTION_META, emptyHomeConfig, normalizeHomeConfig, type HomeConfig } from "@/lib/home-config";
 
@@ -60,9 +61,16 @@ export default function AdminHomePage() {
     }
   }
 
-  if (!data && !error) return <p className="text-sm text-muted">Loading…</p>;
+  if (!data && !error) {
+    return (
+      <AdminOnly>
+        <p className="text-sm text-muted">Loading…</p>
+      </AdminOnly>
+    );
+  }
 
   return (
+    <AdminOnly>
     <main className="space-y-6">
       <AdminHeader
         title="Homepage"
@@ -167,6 +175,97 @@ export default function AdminHomePage() {
       </AdminCard>
 
       <AdminCard>
+        <div className="flex flex-wrap items-end justify-between gap-3">
+          <div>
+            <h2 className="text-sm font-semibold">Staff collections</h2>
+            <p className="mt-1 text-sm text-muted">Up to 8 shelves on home. Each can hold 24 published titles.</p>
+          </div>
+          <AdminButton
+            type="button"
+            variant="secondary"
+            disabled={config.collections.length >= 8}
+            onClick={() =>
+              setConfig((prev) => {
+                if (prev.collections.length >= 8) return prev;
+                const id = `col-${Date.now().toString(36)}`;
+                return {
+                  ...prev,
+                  collections: [...prev.collections, { id, name: "Start here", slug: `start-here-${id.slice(-4)}`, titleIds: [] }]
+                };
+              })
+            }
+          >
+            Add shelf
+          </AdminButton>
+        </div>
+        <div className="mt-4 space-y-6">
+          {config.collections.map((shelf, index) => (
+            <div key={shelf.id} className="rounded-xl bg-elevated/50 p-4 ring-1 ring-white/8">
+              <div className="mb-3 flex items-center justify-between gap-2">
+                <p className="text-sm font-medium">Shelf {index + 1}</p>
+                <button
+                  type="button"
+                  className="text-xs text-red-400"
+                  onClick={() =>
+                    setConfig((prev) => ({
+                      ...prev,
+                      collections: prev.collections.filter((row) => row.id !== shelf.id)
+                    }))
+                  }
+                >
+                  Remove shelf
+                </button>
+              </div>
+              <div className="grid gap-3 md:grid-cols-2">
+                <Field label="Name">
+                  <input
+                    value={shelf.name}
+                    onChange={(event) => {
+                      const name = event.target.value;
+                      setConfig((prev) => ({
+                        ...prev,
+                        collections: prev.collections.map((row) => (row.id === shelf.id ? { ...row, name } : row))
+                      }));
+                    }}
+                    className={adminControl}
+                  />
+                </Field>
+                <Field label="URL slug">
+                  <input
+                    value={shelf.slug}
+                    onChange={(event) => {
+                      const slug = event.target.value.toLowerCase().replace(/[^a-z0-9-]+/g, "-");
+                      setConfig((prev) => ({
+                        ...prev,
+                        collections: prev.collections.map((row) => (row.id === shelf.id ? { ...row, slug } : row))
+                      }));
+                    }}
+                    className={adminControl}
+                  />
+                </Field>
+              </div>
+              <Picker
+                title="Titles on this shelf"
+                hint="Order is the rail order. Unpublished titles are hidden on the public site."
+                titles={data?.titles ?? []}
+                selected={shelf.titleIds}
+                onChange={(titleIds) =>
+                  setConfig((prev) => ({
+                    ...prev,
+                    collections: prev.collections.map((row) => (row.id === shelf.id ? { ...row, titleIds } : row))
+                  }))
+                }
+                limit={24}
+                embedded
+                fallbackHint="Add published titles to show this shelf on home."
+              />
+            </div>
+          ))}
+          {!config.collections.length ? <p className="text-sm text-muted">No shelves yet. Add one, then pick titles.</p> : null}
+        </div>
+      </AdminCard>
+
+      <AdminCard>
         <Field label="Community guidelines (watch comments tab)">
           <textarea
             value={guidelines}
@@ -189,6 +288,7 @@ export default function AdminHomePage() {
         </Link>
       </div>
     </main>
+    </AdminOnly>
   );
 }
 
@@ -198,7 +298,9 @@ function Picker({
   titles,
   selected,
   onChange,
-  fallbackHint
+  fallbackHint,
+  limit = 8,
+  embedded
 }: {
   title: string;
   hint: string;
@@ -206,6 +308,8 @@ function Picker({
   selected: string[];
   onChange: (ids: string[]) => void;
   fallbackHint?: string;
+  limit?: number;
+  embedded?: boolean;
 }) {
   const [q, setQ] = useState("");
   const byId = useMemo(() => new Map(titles.map((item) => [item.id, item])), [titles]);
@@ -224,8 +328,8 @@ function Picker({
     onChange(copy);
   }
 
-  return (
-    <AdminCard>
+  const body = (
+    <>
       <h2 className="text-sm font-semibold">{title}</h2>
       <p className="mt-1 text-sm text-muted">{hint}</p>
       <ol className="mt-3 space-y-2">
@@ -267,7 +371,7 @@ function Picker({
                 type="button"
                 className="flex w-full items-center justify-between px-3 py-2 text-left text-sm hover:bg-elevated"
                 onClick={() => {
-                  onChange([...selected, item.id].slice(0, 8));
+                  onChange([...selected, item.id].slice(0, limit));
                   setQ("");
                 }}
               >
@@ -279,6 +383,9 @@ function Picker({
           {!hits.length ? <li className="px-3 py-2 text-sm text-muted">No matches.</li> : null}
         </ul>
       ) : null}
-    </AdminCard>
+    </>
   );
+
+  if (embedded) return <div className="mt-4">{body}</div>;
+  return <AdminCard>{body}</AdminCard>;
 }

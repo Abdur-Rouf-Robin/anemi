@@ -3,8 +3,9 @@
 import Link from "next/link";
 import { useMemo, useState } from "react";
 
+import { episodeKindLabel } from "@/lib/display-title";
 import type { WatchEpisode } from "@/lib/types";
-import { cn } from "@/lib/utils";
+import { cn, isPlayableEpisode } from "@/lib/utils";
 
 const CHUNK = 40;
 
@@ -100,29 +101,33 @@ export function EpisodeGrid({
           })}
         </div>
       ) : null}
-      <div className="grid max-h-[min(70vh,100%)] flex-1 grid-cols-5 content-start gap-1.5 overflow-y-auto sm:grid-cols-6 lg:max-h-none">
-        {visible.map((episode) => (
-          <Link
-            key={episode.id}
-            href={`/watch/${episode.id}`}
-            prefetch={false}
-            title={`${episode.name} · ${episode.audioKind === "DUB" ? "Dub" : "Sub"}${episode.language ? ` · ${episode.language}` : ""}`}
-            onClick={(event) => {
-              if (!onPick || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey || event.button !== 0) {
-                return;
-              }
-              event.preventDefault();
-              onPick(episode.id);
-            }}
-            className={cn(
-              "flex min-h-10 items-center justify-center rounded-md px-1 py-1 text-sm ring-1 ring-white/10 transition-colors",
-              episode.id === activeId
+      <div className="grid max-h-[min(50vh,22rem)] flex-1 grid-cols-4 content-start gap-1.5 overflow-y-auto sm:max-h-[min(70vh,100%)] sm:grid-cols-6 lg:max-h-none">
+        {visible.map((episode) => {
+          const playable = isPlayableEpisode(episode);
+          const className = cn(
+            "flex min-h-10 items-center justify-center rounded-md px-1 py-1 text-sm ring-1 ring-white/10 transition-colors",
+            !playable
+              ? "cursor-default bg-elevated/50 text-muted/70"
+              : episode.id === activeId
                 ? "bg-accent text-accent-ink"
                 : "bg-elevated text-muted hover:bg-surface hover:text-ink"
-            )}
-          >
+          );
+          const kind = episodeKindLabel(episode.kind);
+          const label = `${episode.name} · ${episode.audioKind === "DUB" ? "Dub" : "Sub"}${episode.language ? ` · ${episode.language}` : ""}${kind ? ` · ${kind}` : ""}`;
+          const inner = (
             <span className="flex flex-col items-center leading-none">
-              <span>{episode.number}</span>
+              <span className="relative">
+                {episode.number}
+                {kind ? (
+                  <span
+                    className={cn(
+                      "absolute -top-0.5 -right-1.5 size-1.5 rounded-full",
+                      episode.kind === "FILLER" ? "bg-amber-400" : "bg-sky-400"
+                    )}
+                    title={kind}
+                  />
+                ) : null}
+              </span>
               {dupNumbers.has(episode.number) || (audio === "ALL" && hasSub && hasDub) ? (
                 <span className="mt-0.5 max-w-full truncate px-0.5 text-[10px] opacity-70">
                   {episode.audioKind === "DUB" ? "Dub" : "Sub"}
@@ -130,8 +135,33 @@ export function EpisodeGrid({
                 </span>
               ) : null}
             </span>
+          );
+          if (!playable) {
+            return (
+              <span key={episode.id} title={`${label} · not available yet`} className={className}>
+                {inner}
+              </span>
+            );
+          }
+          return (
+          <Link
+            key={episode.id}
+            href={`/watch/${episode.id}`}
+            prefetch={false}
+            title={label}
+            onClick={(event) => {
+              if (!onPick || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey || event.button !== 0) {
+                return;
+              }
+              event.preventDefault();
+              onPick(episode.id);
+            }}
+            className={className}
+          >
+            {inner}
           </Link>
-        ))}
+          );
+        })}
       </div>
     </div>
   );

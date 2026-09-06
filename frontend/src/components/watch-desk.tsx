@@ -16,7 +16,9 @@ import { VoteWidget } from "@/components/vote-widget";
 import { WatchNextRail } from "@/components/watch-next-rail";
 import { WatchTogetherButton } from "@/components/watch-together-button";
 import { api } from "@/lib/client-api";
+import { displayTitle } from "@/lib/display-title";
 import type { TitleCard, WatchPayload } from "@/lib/types";
+import { useLocale } from "@/lib/use-locale";
 import { audioTrackLabel, collectCaptionOptions, formatDuration, sortAudioFiles } from "@/lib/utils";
 import { mapCatalogEpisode, watchIdFromPath, type CatalogEpisodeResponse } from "@/lib/watch-map";
 
@@ -74,6 +76,8 @@ export function WatchDesk({
   }, [data.episode.id, openEpisode]);
 
   const { episode, title, episodes, seasonNumber } = data;
+  const locale = useLocale();
+  const heading = displayTitle(title, locale);
   const audio = episode.audioKind ?? "SUB";
   const audioLanguage = episode.language ?? "";
   const sameNumber = sortAudioFiles(episodes.filter((item) => item.number === episode.number));
@@ -98,12 +102,12 @@ export function WatchDesk({
   }
 
   return (
-    <main className="watch-shell pb-16 pt-3 sm:pt-4">
+    <main className="watch-shell pb-8 pt-2 sm:pt-4">
       <WatchStage
         player={
           <MediaPlayer
             episodeId={episode.id}
-            title={title.name}
+            title={heading}
             episodeName={`${title.type === "MOVIE" ? "" : `S${seasonNumber} E${episode.number} · `}${episode.name}`}
             src={episode.videoUrl}
             durationSec={episode.durationSec}
@@ -144,15 +148,15 @@ export function WatchDesk({
       <div className="mt-5 flex gap-4 rounded-xl bg-surface/90 p-4 ring-1 ring-white/8 sm:gap-5 sm:p-5">
         <Link href={`/title/${title.slug}`} className="hidden shrink-0 sm:block">
           <PosterArt
-            name={title.name}
+            name={heading}
             hue={title.hue}
             src={title.posterUrl || title.backdropUrl}
             className="h-40 w-[6.75rem] rounded-xl sm:h-48 sm:w-32"
           />
         </Link>
         <div className="min-w-0 flex-1">
-          <Link href={`/title/${title.slug}`} className="text-2xl font-semibold tracking-tight hover:text-accent">
-            {title.name}
+          <Link href={`/title/${title.slug}`} className="text-xl font-semibold tracking-tight hover:text-accent sm:text-2xl">
+            {heading}
           </Link>
           <p className="mt-1 text-sm text-muted">
             {title.type === "MOVIE" ? episode.name : `Episode ${episode.number} · ${episode.name}`}
@@ -194,7 +198,7 @@ export function WatchDesk({
           <div className="mt-4">{title.slug ? <VoteWidget slug={title.slug} score={title.score} /> : null}</div>
           <div className="mt-3 flex flex-wrap items-center gap-2">
             {title.id ? <TitleActions titleId={title.id} /> : null}
-            <ShareButton title={`${title.name} · ${episode.name}`} />
+            <ShareButton title={`${heading} · ${episode.name}`} />
             <WatchTogetherButton episodeId={episode.id} />
           </div>
         </div>
@@ -227,7 +231,7 @@ export function WatchDesk({
         </aside>
       </div>
       <div className="mt-10">
-        <WatchNextRail items={related} studio={title.studio} name={title.name} flush />
+        <WatchNextRail items={related} studio={title.studio} name={heading} flush />
       </div>
     </main>
   );

@@ -2,7 +2,8 @@
 
 import { useEffect, useState } from "react";
 
-import { AdminBadge, AdminHeader, AdminNotice, AdminTable, Td, Th, adminControl } from "@/components/admin/ui";
+import { AdminBadge, AdminButton, AdminCard, AdminHeader, AdminNotice, AdminTable, Field, Td, Th, adminControl } from "@/components/admin/ui";
+import { AdminOnly } from "@/components/admin-only";
 import { api } from "@/lib/client-api";
 
 type AdminUser = {
@@ -36,9 +37,53 @@ export default function AdminUsersPage() {
   }
 
   return (
+    <AdminOnly>
     <main>
-      <AdminHeader title="Users" description="Promote a member to admin so they can use this CMS." />
+      <AdminHeader title="Users" description="Create an account when signup is closed, or promote a member." />
       {error ? <div className="mb-4"><AdminNotice>{error}</AdminNotice></div> : null}
+      <AdminCard className="mb-6 max-w-xl">
+        <form
+          className="space-y-3"
+          onSubmit={(event) => {
+            event.preventDefault();
+            const form = event.currentTarget;
+            const data = new FormData(form);
+            void api("/admin/users", {
+              method: "POST",
+              body: JSON.stringify({
+                email: String(data.get("email") ?? ""),
+                displayName: String(data.get("displayName") ?? ""),
+                password: String(data.get("password") ?? ""),
+                role: String(data.get("role") ?? "MEMBER")
+              })
+            })
+              .then(() => {
+                form.reset();
+                return load();
+              })
+              .catch((err: Error) => setError(err.message));
+          }}
+        >
+          <Field label="Display name">
+            <input name="displayName" required minLength={2} className={adminControl} />
+          </Field>
+          <Field label="Email">
+            <input name="email" type="email" required className={adminControl} />
+          </Field>
+          <Field label="Password">
+            <input name="password" type="password" required minLength={10} className={adminControl} placeholder="10+ with a letter and a number" />
+          </Field>
+          <Field label="Role">
+            <select name="role" defaultValue="MEMBER" className={adminControl}>
+              <option value="MEMBER">Member</option>
+              <option value="VIEWER">Viewer</option>
+              <option value="MODERATOR">Moderator</option>
+              <option value="ADMIN">Admin</option>
+            </select>
+          </Field>
+          <AdminButton type="submit">Create user</AdminButton>
+        </form>
+      </AdminCard>
       <AdminTable>
         <thead>
           <tr className="border-b border-line">
@@ -73,5 +118,6 @@ export default function AdminUsersPage() {
         </tbody>
       </AdminTable>
     </main>
+    </AdminOnly>
   );
 }

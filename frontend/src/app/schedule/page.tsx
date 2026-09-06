@@ -19,6 +19,11 @@ export default async function SchedulePage() {
           kicker="Calendar"
           title="Schedule"
           blurb="Upcoming and recent air dates from your catalog, in your local timezone."
+          actions={
+            <a href="/feed/schedule.ics" className="rounded-full bg-elevated px-3 py-1.5 text-sm text-muted ring-1 ring-white/10 hover:text-ink">
+              Add to calendar
+            </a>
+          }
         />
       </div>
       {days.length ? (

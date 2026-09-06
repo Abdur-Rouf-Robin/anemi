@@ -10,6 +10,7 @@ export type TitleCard = {
   type: TitleType;
   status: TitleStatus;
   name: string;
+  nameJa?: string | null;
   synopsis: string;
   year: number | null;
   hue: number;
@@ -27,7 +28,7 @@ export type TitleCard = {
   episodeCount?: number;
   windowViews?: number;
   genres: Genre[];
-  seasons?: { number: number; episodes?: { id: string }[] }[];
+  seasons?: { number: number; episodes?: { id: string; audioKind?: string; videoUrl?: string | null }[] }[];
   continueEpisodeId?: string;
   progress?: number;
 };
@@ -56,6 +57,7 @@ export type WatchEpisode = {
   audioKind?: "SUB" | "DUB";
   language?: string | null;
   airDate?: string | null;
+  kind?: "CANON" | "FILLER" | "RECAP" | string | null;
   captions?: { language: string; url: string }[];
 };
 
@@ -65,6 +67,7 @@ export type WatchPayload = {
     id?: string;
     slug: string;
     name: string;
+    nameJa?: string | null;
     hue: number;
     type: string;
     studio?: string | null;
@@ -83,6 +86,17 @@ export type WatchPayload = {
 export type ContinueTitle = TitleCard & {
   continueEpisodeId?: string;
   progress?: number;
+};
+
+export type Playlist = {
+  id: string;
+  name: string;
+  slug: string;
+  createdAt: string;
+  updatedAt: string;
+  itemCount: number;
+  items: TitleCard[];
+  mine?: boolean;
 };
 
 export type LibraryPayload = {
@@ -109,6 +123,7 @@ export type Episode = {
   audioKind?: "SUB" | "DUB";
   language?: string | null;
   airDate?: string | null;
+  kind?: "CANON" | "FILLER" | "RECAP" | string | null;
   introStartSec?: number | null;
   introEndSec?: number | null;
   videoUrl?: string | null;
@@ -138,6 +153,7 @@ export type HomePayload = {
   featuredGenres?: { slug: string; name: string }[];
   homeSections?: Record<string, boolean>;
   watchNextTitle?: TitleCard | null;
+  collections?: { name: string; slug: string; items: TitleCard[] }[];
 };
 
 export type Preferences = {

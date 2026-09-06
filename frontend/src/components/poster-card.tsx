@@ -3,7 +3,9 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 
+import { displayTitle } from "@/lib/display-title";
 import type { TitleCard } from "@/lib/types";
+import { useLocale } from "@/lib/use-locale";
 import { cn, firstEpisodeId, formatAirDate } from "@/lib/utils";
 
 export function PosterArt({
@@ -65,6 +67,8 @@ export function PosterCard({
   showAirDate?: boolean;
   layout?: "rail" | "grid";
 }) {
+  const locale = useLocale();
+  const label = displayTitle(title, locale);
   const episodeId = title.continueEpisodeId ?? firstEpisodeId(title);
   const href = episodeId ? `/watch/${episodeId}` : `/title/${title.slug}`;
   const bar = progress ?? title.progress;
@@ -84,10 +88,10 @@ export function PosterCard({
   return (
     <Link
       href={href}
-      className={cn("group block", layout === "grid" ? "w-full" : "w-[148px] shrink-0 sm:w-[168px]")}
+      className={cn("group block", layout === "grid" ? "w-full" : "w-[132px] shrink-0 sm:w-[168px]")}
     >
       <div className="poster-frame relative aspect-2/3 bg-elevated transition-transform duration-200 ease-out motion-safe:group-hover:-translate-y-1.5 motion-safe:group-hover:scale-[1.04]">
-        <PosterArt name={title.name} hue={title.hue} src={art} className="absolute inset-0" />
+        <PosterArt name={label} hue={title.hue} src={art} className="absolute inset-0" />
         <span className="absolute inset-0 flex flex-col justify-end bg-linear-to-t from-black/92 via-black/45 to-transparent p-3 opacity-0 transition-opacity duration-200 group-hover:opacity-100">
           <span className="mb-1 flex flex-wrap gap-1">
             {title.score != null ? (
@@ -108,7 +112,7 @@ export function PosterCard({
             <span className="mb-2 line-clamp-4 text-[11px] leading-snug text-white/80">{title.synopsis}</span>
           ) : null}
           <span className="inline-flex w-fit items-center rounded-full bg-accent px-3.5 py-1.5 text-xs font-semibold text-accent-ink shadow-lg">
-            Watch now
+            {episodeId ? "Watch now" : "Details"}
           </span>
         </span>
         {badge ? (
@@ -145,7 +149,7 @@ export function PosterCard({
         ) : null}
       </div>
       <div className="mt-2">
-        <p className="line-clamp-2 text-sm font-medium leading-snug">{title.name}</p>
+        <p className="line-clamp-2 text-sm font-medium leading-snug">{label}</p>
         <p className="mt-0.5 text-xs text-muted">{airLabel ?? title.year ?? title.type.toLowerCase()}</p>
       </div>
     </Link>

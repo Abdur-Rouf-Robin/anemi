@@ -39,6 +39,14 @@ const nextConfig: NextConfig = {
         destination: `${api}/:path*`
       },
       {
+        source: "/feed/latest.xml",
+        destination: `${api}/catalog/feed/latest.xml`
+      },
+      {
+        source: "/feed/schedule.ics",
+        destination: `${api}/catalog/feed/schedule.ics`
+      },
+      {
         source: "/media/:path*",
         destination: `${api}/media/:path*`
       },

@@ -1,32 +1,31 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState } from "react";
 
-import { getMe, type Me } from "@/lib/client-api";
+import { useSession } from "@/components/session-provider";
 
 export function AccountMenu() {
-  const [user, setUser] = useState<Me | null | undefined>(undefined);
-
-  useEffect(() => {
-    getMe()
-      .then((data) => setUser(data.user))
-      .catch(() => setUser(null));
-  }, []);
-
+  const { user, access } = useSession();
   const staff = user?.role === "ADMIN" || user?.role === "MODERATOR";
+  const canSignup = access?.signupMode !== "closed";
+
+  if (user === undefined) {
+    return <div className="size-8 rounded-full bg-elevated ring-1 ring-white/10" aria-hidden />;
+  }
 
   if (!user) {
     return (
       <div className="flex items-center gap-2">
-        <Link href="/account" className="hidden text-sm font-medium text-muted hover:text-ink sm:inline">
-          Sign in
-        </Link>
+        {canSignup ? (
+          <Link href="/account" className="hidden text-sm font-medium text-muted hover:text-ink sm:inline">
+            Sign in
+          </Link>
+        ) : null}
         <Link
-          href="/account?mode=signup"
+          href={canSignup ? "/account?mode=signup" : "/account"}
           className="rounded-full bg-accent px-4 py-1.5 text-sm font-semibold text-accent-ink"
         >
-          Sign up
+          {canSignup ? "Sign up" : "Sign in"}
         </Link>
       </div>
     );

@@ -20,6 +20,9 @@
     "start:frontend": "npm run start -w anemi-frontend",
     "prod": "bash scripts/prod.sh",
     "backup": "bash scripts/backup.sh",
+    "backup:media": "BACKUP_MEDIA=1 bash scripts/backup.sh",
+    "prod:check": "bash scripts/prod-check.sh",
+    "backup:cron": "bash scripts/install-backup-cron.sh",
     "test": "npm run test -w anemi-backend"
   },
   "devDependencies": {

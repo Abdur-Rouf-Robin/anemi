@@ -1,8 +1,10 @@
-import { Body, Controller, Get, Param, Put, Query, UnauthorizedException } from "@nestjs/common";
+import { Body, Controller, Get, Header, HttpCode, Param, Post, Put, Query, Res, UnauthorizedException } from "@nestjs/common";
+import type { Response } from "express";
 
 import type { AuthUser } from "../auth/auth.types";
 import { CurrentUser } from "../auth/decorators/current-user.decorator";
 import { Public } from "../auth/decorators/public.decorator";
+import { SkipCsrf } from "../auth/decorators/skip-csrf.decorator";
 import { CatalogService } from "./catalog.service";
 import { QueryTitlesDto } from "./dto/query-titles.dto";
 import { RateTitleDto } from "./dto/rate-title.dto";
@@ -49,6 +51,18 @@ export class CatalogController {
     return this.catalog.latest(audio, size);
   }
 
+  @Get("feed/latest.xml")
+  @Header("Cache-Control", "public, max-age=300")
+  async latestFeed(@Res() res: Response) {
+    res.type("application/rss+xml; charset=utf-8").send(await this.catalog.latestRss());
+  }
+
+  @Get("feed/schedule.ics")
+  @Header("Cache-Control", "public, max-age=300")
+  async scheduleFeed(@Res() res: Response) {
+    res.type("text/calendar; charset=utf-8").send(await this.catalog.scheduleIcs());
+  }
+
   @Get("schedule")
   schedule() {
     return this.catalog.schedule();
@@ -57,6 +71,21 @@ export class CatalogController {
   @Get("charts")
   charts() {
     return this.catalog.charts();
+  }
+
+  @Get("studios")
+  studios() {
+    return this.catalog.studios();
+  }
+
+  @Get("studios/:slug")
+  studio(@Param("slug") slug: string) {
+    return this.catalog.studio(slug);
+  }
+
+  @Get("collections/:slug")
+  collection(@Param("slug") slug: string) {
+    return this.catalog.collection(slug);
   }
 
   @Get("titles")
@@ -92,5 +121,12 @@ export class CatalogController {
   @Get("episodes/:id")
   episode(@Param("id") id: string) {
     return this.catalog.episode(id);
+  }
+
+  @SkipCsrf()
+  @Post("episodes/:id/view")
+  @HttpCode(204)
+  recordView(@Param("id") id: string) {
+    return this.catalog.recordView(id);
   }
 }

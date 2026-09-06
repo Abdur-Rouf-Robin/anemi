@@ -13,8 +13,10 @@ import {
   Field,
   adminControl
 } from "@/components/admin/ui";
-import { api, uploadFile } from "@/lib/client-api";
+import { api, uploadFile, uploadFiles } from "@/lib/client-api";
 import { toDatetimeLocal } from "@/lib/utils";
+
+import { InboxImport } from "./inbox-import";
 
 function formAirDate(form: FormData) {
   const raw = String(form.get("airDate") ?? "").trim();
@@ -40,6 +42,7 @@ type Episode = {
   captions?: { id: string; language: string; url: string }[];
   outroStartSec?: number | null;
   publish?: string;
+  kind?: string;
 };
 
 type Season = { id: string; number: number; episodes: Episode[] };
@@ -47,6 +50,7 @@ type Season = { id: string; number: number; episodes: Episode[] };
 type AdminTitle = {
   id: string;
   name: string;
+  nameJa?: string | null;
   slug: string;
   type: "SERIES" | "MOVIE" | "OVA" | "ONA" | "SPECIAL";
   status: "UPCOMING" | "AIRING" | "COMPLETED";
@@ -81,6 +85,14 @@ export default function AdminTitleEditorPage() {
   const [genres, setGenres] = useState<{ slug: string; name: string }[]>([]);
   const [error, setError] = useState("");
   const [note, setNote] = useState("");
+  const [packing, setPacking] = useState<string | null>(null);
+  const [publishingSeason, setPublishingSeason] = useState<string | null>(null);
+
+  function readyToPublish(episode: Episode) {
+    if (episode.publish === "PUBLISHED") return false;
+    if (!episode.videoUrl) return false;
+    return episode.encodeStatus === "ready" || episode.encodeStatus === "idle";
+  }
 
   async function load() {
     const [next, list] = await Promise.all([
@@ -105,6 +117,7 @@ export default function AdminTitleEditorPage() {
         method: "PATCH",
         body: JSON.stringify({
           name: form.get("name"),
+          nameJa: String(form.get("nameJa") ?? "").trim() || undefined,
           slug: form.get("slug"),
           type: form.get("type"),
           status: form.get("status"),
@@ -148,6 +161,25 @@ export default function AdminTitleEditorPage() {
     }
   }
 
+  async function publishSeasonReady(seasonId: string) {
+    setError("");
+    setPublishingSeason(seasonId);
+    try {
+      const result = await api<{ published: number; skipped: number }>(`/admin/seasons/${seasonId}/publish-ready`, {
+        method: "POST"
+      });
+      setNote(
+        `Published ${result.published} ready episode${result.published === 1 ? "" : "s"}.` +
+          (result.skipped ? ` Left ${result.skipped} draft (no file or still encoding).` : "")
+      );
+      await load();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Could not publish season");
+    } finally {
+      setPublishingSeason(null);
+    }
+  }
+
   async function addEpisode(seasonId: string, event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (!title) return;
@@ -165,7 +197,8 @@ export default function AdminTitleEditorPage() {
           audioKind: form.get("audioKind") || "SUB",
           language: String(form.get("language") ?? "").trim() || undefined,
           airDate: formAirDate(form),
-          number: form.get("number") ? Number(form.get("number")) : undefined
+          number: form.get("number") ? Number(form.get("number")) : undefined,
+          kind: form.get("kind") || "CANON"
         })
       });
       formEl.reset();
@@ -195,7 +228,8 @@ export default function AdminTitleEditorPage() {
           audioKind: form.get("audioKind") || "SUB",
           language: String(form.get("language") ?? "").trim(),
           airDate: formAirDate(form),
-          publish: form.get("publish") || undefined
+          publish: form.get("publish") || undefined,
+          kind: form.get("kind") || "CANON"
         })
       });
       setNote("Episode saved.");
@@ -213,6 +247,33 @@ export default function AdminTitleEditorPage() {
       await load();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Upload failed");
+    }
+  }
+
+  async function uploadPack(seasonId: string, files: FileList | null) {
+    if (!title || !files?.length) return;
+    setError("");
+    setPacking(seasonId);
+    try {
+      const result = await uploadFiles<{
+        queued: number;
+        created: number;
+        updated: number;
+        skipped: number;
+        results: { name: string; status: string; reason?: string }[];
+      }>(`/admin/titles/${title.id}/pack?seasonId=${encodeURIComponent(seasonId)}`, Array.from(files));
+      const misses = result.results
+        .filter((row) => row.status === "skipped")
+        .map((row) => `${row.name}${row.reason ? ` (${row.reason})` : ""}`);
+      setNote(
+        `Pack queued ${result.queued} (${result.created} new, ${result.updated} updated)` +
+          (misses.length ? `. Skipped: ${misses.join("; ")}` : ".")
+      );
+      await load();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Pack upload failed");
+    } finally {
+      setPacking(null);
     }
   }
 
@@ -305,7 +366,10 @@ export default function AdminTitleEditorPage() {
                       const file = event.target.files?.[0];
                       if (!file || !title) return;
                       void uploadFile(`/admin/titles/${title.id}/poster`, file)
-                        .then(() => load())
+                        .then(() => {
+                          setNote("Poster uploaded.");
+                          return load();
+                        })
                         .catch((err: Error) => setError(err.message));
                       event.target.value = "";
                     }}
@@ -331,7 +395,10 @@ export default function AdminTitleEditorPage() {
                       const file = event.target.files?.[0];
                       if (!file || !title) return;
                       void uploadFile(`/admin/titles/${title.id}/backdrop`, file)
-                        .then(() => load())
+                        .then(() => {
+                          setNote("Backdrop uploaded.");
+                          return load();
+                        })
                         .catch((err: Error) => setError(err.message));
                       event.target.value = "";
                     }}
@@ -342,6 +409,9 @@ export default function AdminTitleEditorPage() {
             <div className="grid gap-4 md:grid-cols-2">
               <Field label="Name">
                 <input name="name" defaultValue={title.name} className={adminControl} />
+              </Field>
+              <Field label="Japanese name">
+                <input name="nameJa" defaultValue={title.nameJa ?? ""} placeholder="日本語タイトル" className={adminControl} />
               </Field>
               <Field label="Slug (URL)">
                 <input name="slug" defaultValue={title.slug} className={adminControl} />
@@ -448,11 +518,24 @@ export default function AdminTitleEditorPage() {
         <div className="space-y-6">
           {title.seasons.map((season) => (
             <div key={season.id} className="card-panel p-5">
-              <div className="mb-4 flex items-center justify-between gap-3">
+              <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
                 <h3 className="font-medium">Season {season.number}</h3>
-                <AdminButton type="button" variant="danger" className="h-8 px-3 text-xs" onClick={() => void removeSeason(season.id)}>
-                  Delete season
-                </AdminButton>
+                <div className="flex flex-wrap gap-2">
+                  <AdminButton
+                    type="button"
+                    variant="secondary"
+                    className="h-8 px-3 text-xs"
+                    disabled={publishingSeason === season.id || !season.episodes.some(readyToPublish)}
+                    onClick={() => void publishSeasonReady(season.id)}
+                  >
+                    {publishingSeason === season.id
+                      ? "Publishing…"
+                      : `Publish ready (${season.episodes.filter(readyToPublish).length})`}
+                  </AdminButton>
+                  <AdminButton type="button" variant="danger" className="h-8 px-3 text-xs" onClick={() => void removeSeason(season.id)}>
+                    Delete season
+                  </AdminButton>
+                </div>
               </div>
 
               <div className="mb-5 rounded-xl bg-elevated/50 p-4 ring-1 ring-white/8">
@@ -473,6 +556,13 @@ export default function AdminTitleEditorPage() {
                   <Field label="Language (for extra Sub/Dub files)">
                     <input name="language" placeholder="English, Spanish, Japanese…" list="audio-langs" className={adminControl} />
                   </Field>
+                  <Field label="Kind">
+                    <select name="kind" className={adminControl}>
+                      <option value="CANON">Canon</option>
+                      <option value="FILLER">Filler</option>
+                      <option value="RECAP">Recap</option>
+                    </select>
+                  </Field>
                   <p className="text-xs text-muted md:col-span-4">
                     Same episode number + different language creates another option in the player. Example: Dub English, then Dub Spanish. Extra caption languages are .vtt files on each video.
                   </p>
@@ -489,6 +579,34 @@ export default function AdminTitleEditorPage() {
                     <AdminButton type="submit">Add episode here</AdminButton>
                   </div>
                 </form>
+                <div className="mt-4 border-t border-white/8 pt-4">
+                  <p className="mb-2 text-sm font-medium">Or drop a season pack</p>
+                  <p className="mb-3 text-xs text-muted">
+                    Browser upload is for small files. Prefer rsync into the inbox, then import the folder. Names like S01E03.mp4, 1x02-dub.mkv, Episode 07.mov, or 04.mp4. Creates drafts and queues encode — does not publish.
+                  </p>
+                  <label className={`inline-flex h-10 cursor-pointer items-center rounded-full bg-elevated px-4 text-sm font-semibold ring-1 ring-white/10 ${packing === season.id ? "opacity-60" : ""}`}>
+                    {packing === season.id ? "Uploading pack…" : "Choose videos"}
+                    <input
+                      type="file"
+                      multiple
+                      accept="video/mp4,video/webm,video/quicktime,.mp4,.webm,.mov,.mkv"
+                      className="hidden"
+                      disabled={packing === season.id}
+                      onChange={(event) => {
+                        void uploadPack(season.id, event.target.files);
+                        event.target.value = "";
+                      }}
+                    />
+                  </label>
+                  <InboxImport
+                    titleId={title.id}
+                    seasonId={season.id}
+                    onDone={(note) => {
+                      setNote(note);
+                      void load();
+                    }}
+                  />
+                </div>
               </div>
 
               <p className="mb-3 text-sm font-medium">Episodes in this season</p>
@@ -525,6 +643,13 @@ export default function AdminTitleEditorPage() {
                         </Field>
                         <Field label="Language">
                           <input name="language" defaultValue={episode.language ?? ""} placeholder="English, Spanish…" list="audio-langs" className={adminControl} />
+                        </Field>
+                        <Field label="Kind">
+                          <select name="kind" defaultValue={episode.kind ?? "CANON"} className={adminControl}>
+                            <option value="CANON">Canon</option>
+                            <option value="FILLER">Filler</option>
+                            <option value="RECAP">Recap</option>
+                          </select>
                         </Field>
                         <Field label="Publish">
                           <select name="publish" defaultValue={episode.publish ?? "PUBLISHED"} className={adminControl}>

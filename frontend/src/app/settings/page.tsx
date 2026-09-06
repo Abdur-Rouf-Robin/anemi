@@ -4,33 +4,37 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 
 import { PageIntro } from "@/components/page-intro";
-import { api, getMe } from "@/lib/client-api";
+import { useSession } from "@/components/session-provider";
+import { api } from "@/lib/client-api";
 import { t } from "@/lib/i18n";
 import { defaultPrefs, readLocalPrefs, writeLocalPrefs } from "@/lib/prefs";
 import { setTheme } from "@/components/theme-provider";
 import type { Preferences } from "@/lib/types";
 
 export default function SettingsPage() {
+  const { user } = useSession();
   const [prefs, setPrefs] = useState<Preferences>(defaultPrefs);
-  const [signedIn, setSignedIn] = useState(false);
+  const signedIn = Boolean(user);
   const [note, setNote] = useState("");
   const [ready, setReady] = useState(false);
 
   useEffect(() => {
     const local = readLocalPrefs();
     setPrefs(local);
-    getMe()
-      .then(async ({ user }) => {
-        setSignedIn(Boolean(user));
-        if (!user) return;
-        const remote = await api<Preferences>("/preferences/me");
+    if (user === undefined) return;
+    if (!user) {
+      setReady(true);
+      return;
+    }
+    api<Preferences>("/preferences/me")
+      .then((remote) => {
         setPrefs(remote);
         writeLocalPrefs(remote);
         if (remote.theme) setTheme(remote.theme);
       })
       .catch(() => undefined)
       .finally(() => setReady(true));
-  }, []);
+  }, [user]);
 
   async function save(next: Partial<Preferences>) {
     const merged = { ...prefs, ...next };

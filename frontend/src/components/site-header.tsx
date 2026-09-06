@@ -19,7 +19,9 @@ const discover = [
   { href: "/browse?sort=popular", label: "Most popular" },
   { href: "/latest", label: "Latest" },
   { href: "/browse?type=SERIES", label: "Series" },
-  { href: "/browse?type=OVA", label: "OVA" }
+  { href: "/browse?type=OVA", label: "OVA" },
+  { href: "/charts", label: "Top 10" },
+  { href: "/studios", label: "Studios" }
 ];
 
 export async function SiteHeader() {
@@ -27,13 +29,13 @@ export async function SiteHeader() {
   const locale = (await cookies()).get("anemi_locale")?.value === "jp" ? "jp" : "en";
 
   return (
-    <header className="sticky top-0 z-40 border-b border-white/6 bg-canvas/80 backdrop-blur-xl">
-      <div className="page-shell flex h-16 items-center gap-4">
-        <Link href="/" className="flex shrink-0 items-center gap-2.5">
+    <header className="sticky top-0 z-40 border-b border-white/6 bg-canvas/80 pt-[env(safe-area-inset-top,0px)] backdrop-blur-xl">
+      <div className="page-shell flex h-14 items-center gap-2 sm:h-16 sm:gap-4">
+        <Link href="/" className="flex shrink-0 items-center gap-2 sm:gap-2.5">
           <span className="grid size-8 place-items-center rounded-lg bg-accent text-sm font-bold text-accent-ink shadow-[0_8px_20px_color-mix(in_oklch,var(--color-accent)_45%,transparent)]">
             A
           </span>
-          <span className="text-[17px] font-semibold tracking-[0.14em] uppercase">Anemi</span>
+          <span className="hidden text-[17px] font-semibold tracking-[0.14em] uppercase min-[380px]:inline">Anemi</span>
         </Link>
         <nav className="hidden items-center gap-5 text-sm font-semibold tracking-wide uppercase xl:flex">
           <HeaderLink href="/" exact>
@@ -84,7 +86,9 @@ export async function SiteHeader() {
           <Link href="/community" className="hidden rounded-full px-3 py-1.5 text-xs font-semibold text-muted hover:text-ink xl:inline">
             {t(locale, "Community")}
           </Link>
-          <LocaleSwitch />
+          <span className="hidden sm:contents">
+            <LocaleSwitch />
+          </span>
           <ThemeToggle />
           <NotificationsBell />
           <AccountMenu />
@@ -96,7 +100,9 @@ export async function SiteHeader() {
           { href: "/discover", label: "Discover" },
           { href: "/schedule", label: "Schedule" },
           { href: "/latest", label: "Latest" },
-          { href: "/az", label: "A–Z" }
+          { href: "/az", label: "A–Z" },
+          { href: "/together", label: "Together" },
+          { href: "/random", label: "Random" }
         ].map((item) => (
           <Link
             key={item.href}

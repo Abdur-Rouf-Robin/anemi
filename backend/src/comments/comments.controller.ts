@@ -1,7 +1,8 @@
-import { Body, Controller, Delete, Get, Param, Post, Query } from "@nestjs/common";
+import { Body, Controller, Delete, Get, Param, Post, Query, UseGuards } from "@nestjs/common";
 
 import { CurrentUser } from "../auth/decorators/current-user.decorator";
 import { Public } from "../auth/decorators/public.decorator";
+import { StaffMfaGuard } from "../auth/guards/staff-mfa.guard";
 import type { AuthUser } from "../auth/auth.types";
 import { CommentsService } from "./comments.service";
 import { CreateCommentDto, ReportCommentDto } from "./dto/create-comment.dto";
@@ -26,6 +27,7 @@ export class CommentsController {
     return this.comments.report(user.id, id, dto);
   }
 
+  @UseGuards(StaffMfaGuard)
   @Delete(":id")
   remove(@CurrentUser() user: AuthUser, @Param("id") id: string) {
     return this.comments.remove(user, id);

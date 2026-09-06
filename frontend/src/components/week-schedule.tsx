@@ -127,8 +127,9 @@ export function WeekSchedule({
                   {formatAirTime(item.airDate)}
                 </span>
                 <span className="min-w-0 flex-1 truncate font-medium">{item.title.name}</span>
-                <span className="shrink-0 rounded-full bg-accent px-3 py-1 text-xs font-semibold text-accent-ink">
-                  Episode {item.number}
+                <span className="shrink-0 rounded-full bg-accent px-2 py-1 text-xs font-semibold text-accent-ink sm:px-3">
+                  <span className="sm:hidden">E{item.number}</span>
+                  <span className="hidden sm:inline">Episode {item.number}</span>
                 </span>
               </Link>
             </li>

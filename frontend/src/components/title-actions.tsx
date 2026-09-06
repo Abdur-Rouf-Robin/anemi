@@ -3,6 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 
+import { PlaylistPicker } from "@/components/playlist-picker";
 import { api } from "@/lib/client-api";
 import type { ListStatus } from "@/lib/types";
 
@@ -107,6 +108,7 @@ export function TitleActions({ titleId, compact = false }: { titleId: string; co
       >
         {ready && following ? "Following" : "Follow"}
       </button>
+      <PlaylistPicker titleId={titleId} />
     </div>
   );
 }

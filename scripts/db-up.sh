@@ -6,7 +6,7 @@ ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$ROOT"
 
 if docker info >/dev/null 2>&1; then
-  exec docker compose up -d postgres redis minio
+  exec docker compose up -d postgres
 fi
 
 if ss -lnt 2>/dev/null | grep -q ':5434'; then

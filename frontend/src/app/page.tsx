@@ -1,5 +1,6 @@
 import { AiringSoonRail } from "@/components/airing-soon-rail";
 import { AzStrip } from "@/components/az-strip";
+import { CommunityRail } from "@/components/community-rail";
 import { FeaturedProgramme } from "@/components/featured-programme";
 import { GenreShowcase } from "@/components/genre-showcase";
 import { HeroCarousel } from "@/components/hero-carousel";
@@ -9,18 +10,19 @@ import { PopularNow } from "@/components/popular-now";
 import { SearchBox } from "@/components/search-box";
 import { WatchNextRail } from "@/components/watch-next-rail";
 import { WeekSchedule } from "@/components/week-schedule";
-import { getGenres, getHome, getLatest, getLibrary, getRelated, getSchedule } from "@/lib/api";
+import { getCommunityPosts, getGenres, getHomeState, getLatest, getLibrary, getRelated, getSchedule } from "@/lib/api";
 import { DEFAULT_HOME_SECTIONS } from "@/lib/home-config";
 import { uniqueById } from "@/lib/utils";
 import { Suspense } from "react";
 
 export default async function HomePage() {
-  const [home, library, latest, genres, schedule] = await Promise.all([
-    getHome(),
+  const [{ home, live: catalogLive }, library, latest, genres, schedule, posts] = await Promise.all([
+    getHomeState(),
     getLibrary(),
     getLatest(),
     getGenres(),
-    getSchedule()
+    getSchedule(),
+    getCommunityPosts(undefined, 5)
   ]);
   const show = { ...DEFAULT_HOME_SECTIONS, ...home.homeSections };
   const continueItems = uniqueById(library?.continueWatching ?? []);
@@ -63,9 +65,24 @@ export default async function HomePage() {
       {show.comingSoon ? (
         <MediaRail title="Coming soon" items={uniqueById(home.upcoming ?? [])} href="/browse?status=UPCOMING" showAirDate />
       ) : null}
+      {show.collections
+        ? (home.collections ?? []).map((shelf) => (
+            <MediaRail
+              key={shelf.slug}
+              title={shelf.name}
+              items={uniqueById(shelf.items)}
+              href={`/collection/${shelf.slug}`}
+            />
+          ))
+        : null}
+      {show.community ? <CommunityRail posts={posts} /> : null}
       {show.az ? <AzStrip /> : null}
 
-      {!heroes.length && !home.trending.length && !home.movies.length ? (
+      {!catalogLive ? (
+        <p className="page-shell text-sm text-muted">
+          The catalog is unavailable right now. Try again in a minute.
+        </p>
+      ) : !heroes.length && !home.trending.length && !home.movies.length ? (
         <p className="page-shell text-sm text-muted">
           Nothing published yet. Sign in as staff and add a title you own or license in the CMS.
         </p>

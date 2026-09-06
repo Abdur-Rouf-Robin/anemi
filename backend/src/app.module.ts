@@ -9,6 +9,7 @@ import { CommunityModule } from "./community/community.module";
 import { HealthController } from "./health/health.controller";
 import { LibraryModule } from "./library/library.module";
 import { MediaModule } from "./media/media.module";
+import { PlaylistsModule } from "./playlists/playlists.module";
 import { PrismaModule } from "./prisma/prisma.module";
 import { TogetherModule } from "./together/together.module";
 
@@ -26,6 +27,7 @@ import { TogetherModule } from "./together/together.module";
     TogetherModule,
     LibraryModule,
     MediaModule,
+    PlaylistsModule,
     AdminModule
   ],
   controllers: [HealthController]

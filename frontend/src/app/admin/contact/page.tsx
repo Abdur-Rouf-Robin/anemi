@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 
 import { AdminButton, AdminCard, AdminHeader, AdminNotice } from "@/components/admin/ui";
+import { AdminOnly } from "@/components/admin-only";
 import { api } from "@/lib/client-api";
 
 type Row = { id: string; name: string; email: string; body: string; createdAt: string };
@@ -26,6 +27,7 @@ export default function AdminContactPage() {
   }
 
   return (
+    <AdminOnly>
     <main>
       <AdminHeader title="Contact" description="Messages from the public contact form." />
       {error ? <AdminNotice>{error}</AdminNotice> : null}
@@ -44,5 +46,6 @@ export default function AdminContactPage() {
         {!items.length ? <p className="text-sm text-muted">No messages.</p> : null}
       </div>
     </main>
+    </AdminOnly>
   );
 }

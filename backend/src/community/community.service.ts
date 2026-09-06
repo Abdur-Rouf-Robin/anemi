@@ -3,6 +3,7 @@ import { Injectable } from "@nestjs/common";
 import { PrismaService } from "../prisma/prisma.service";
 import type { ContactDto, CreatePostDto, CreateRequestDto, NewsletterDto, PreferencesDto } from "./dto/community.dto";
 import { mailFrom, mailTransport, smtpConfigured } from "../admin/mailer";
+import { publicSiteUrl } from "../lib/public-site-url";
 
 @Injectable()
 export class CommunityService {
@@ -23,6 +24,26 @@ export class CommunityService {
         href
       }))
     });
+    if (!smtpConfigured()) return;
+    const transport = mailTransport();
+    if (!transport) return;
+    const users = await this.prisma.user.findMany({
+      where: { id: { in: follows.map((row) => row.userId) } },
+      select: { email: true }
+    });
+    const link = `${publicSiteUrl()}${href}`;
+    for (const user of users) {
+      try {
+        await transport.sendMail({
+          from: mailFrom(),
+          to: user.email,
+          subject: title,
+          text: `${body}\n\n${link}`
+        });
+      } catch {
+        /* publish still succeeds if mail fails */
+      }
+    }
   }
 
   notifications(userId: string) {
@@ -64,11 +85,12 @@ export class CommunityService {
     });
   }
 
-  posts(category?: string) {
+  posts(category?: string, take = 40) {
+    const size = Number.isFinite(take) ? Math.min(40, Math.max(1, take)) : 40;
     return this.prisma.communityPost.findMany({
       where: category ? { category } : undefined,
       orderBy: { createdAt: "desc" },
-      take: 40,
+      take: size,
       include: { user: { select: { displayName: true } } }
     }).then((rows) =>
       rows.map((row) => ({

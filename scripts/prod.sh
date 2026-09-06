@@ -22,13 +22,14 @@ npm run db:generate
 npm run db:migrate
 npm run build
 
-echo "Built. Start API then UI:"
+echo "Built. Start API then UI (this host uses PM2: anemi-backend, anemi-frontend):"
 echo "  NODE_ENV=production npm run start:backend"
 echo "  NODE_ENV=production npm run start:frontend"
-echo "Put Caddy or nginx in front (see deploy/). Then:"
-echo "  1. Change the admin password and confirm MFA is on at /account"
-echo "  2. Replace demo titles in /admin with files you own or license"
-echo "  3. npm run backup"
+echo "Put nginx in front (scripts/nginx-anime.conf). Then:"
+echo "  1. Confirm MFA on the admin at /account"
+echo "  2. rsync licensed files into data/inbox and Import folder in the CMS"
+echo "  3. npm run backup && bash scripts/install-backup-cron.sh"
+echo "  4. bash scripts/prod-check.sh"
 if ! command -v ffmpeg >/dev/null && [[ -z "${FFMPEG_PATH:-}" ]]; then
   echo "ffmpeg is not installed. Uploads will be served as the original file until you install it."
 fi

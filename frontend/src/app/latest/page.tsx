@@ -25,7 +25,7 @@ export default async function LatestPage({
           title="Latest episodes"
           blurb="Newest published episodes from titles you host — Sub, Dub, or both."
           actions={
-            <div className="flex gap-2">
+            <div className="flex flex-wrap gap-2">
               {[
                 { value: "", label: "All" },
                 { value: "SUB", label: "Sub" },
@@ -42,6 +42,9 @@ export default async function LatestPage({
                   {item.label}
                 </Link>
               ))}
+              <a href="/feed/latest.xml" className="rounded-full bg-elevated px-3 py-1.5 text-sm text-muted ring-1 ring-white/10 hover:text-ink">
+                RSS
+              </a>
             </div>
           }
         />

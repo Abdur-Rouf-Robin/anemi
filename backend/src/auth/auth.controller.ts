@@ -17,10 +17,12 @@ import type { AuthUser } from "./auth.types";
 import { CurrentUser } from "./decorators/current-user.decorator";
 import { Public } from "./decorators/public.decorator";
 import { SkipCsrf } from "./decorators/skip-csrf.decorator";
+import { ForgotDto } from "./dto/forgot.dto";
 import { LoginDto } from "./dto/login.dto";
 import { MfaCodeDto, MfaVerifyLoginDto } from "./dto/mfa.dto";
 import { PasswordDto } from "./dto/password.dto";
 import { ProfileDto } from "./dto/profile.dto";
+import { ResetDto } from "./dto/reset.dto";
 import { SignupDto } from "./dto/signup.dto";
 import { AuthRateLimitGuard } from "./guards/auth-rate-limit.guard";
 import { MfaService } from "./mfa.service";
@@ -39,6 +41,12 @@ export class AuthController {
     return { user: user ? await this.auth.publicById(user.id) : null };
   }
 
+  @Public()
+  @Get("access")
+  access() {
+    return this.auth.access();
+  }
+
   @Patch("me")
   async updateMe(
     @CurrentUser() user: AuthUser,
@@ -52,8 +60,15 @@ export class AuthController {
   }
 
   @Post("password")
-  changePassword(@CurrentUser() user: AuthUser, @Body() dto: PasswordDto) {
-    return this.auth.changePassword(user.id, dto.currentPassword, dto.nextPassword);
+  async changePassword(
+    @CurrentUser() user: AuthUser,
+    @Body() dto: PasswordDto,
+    @Req() req: Request,
+    @Res({ passthrough: true }) res: Response
+  ) {
+    const result = await this.auth.changePassword(user.id, dto.currentPassword, dto.nextPassword);
+    const csrfToken = setAuthCookies(req, res, result.accessToken);
+    return { ok: true, user: result.user, csrfToken };
   }
 
   @Public()
@@ -75,7 +90,7 @@ export class AuthController {
     @Req() req: Request,
     @Res({ passthrough: true }) res: Response
   ) {
-    const result = await this.auth.signup(dto.email, dto.displayName, dto.password);
+    const result = await this.auth.signup(dto.email, dto.displayName, dto.password, dto.inviteCode);
     const csrfToken = setAuthCookies(req, res, result.accessToken);
     return { user: result.user, csrfToken };
   }
@@ -125,12 +140,36 @@ export class AuthController {
 
   @Post("mfa/confirm")
   confirmMfa(@CurrentUser() user: AuthUser, @Body() dto: MfaCodeDto) {
-    return this.mfa.confirm(user.id, dto.code);
+    return this.mfa.confirm(user.id, dto.code, dto.setupToken);
   }
 
   @Post("mfa/disable")
   disableMfa(@CurrentUser() user: AuthUser, @Body() dto: MfaCodeDto) {
     return this.mfa.disable(user.id, dto.code);
+  }
+
+  @Public()
+  @SkipCsrf()
+  @UseGuards(AuthRateLimitGuard)
+  @Post("forgot")
+  @HttpCode(200)
+  forgot(@Body() dto: ForgotDto) {
+    return this.auth.requestReset(dto.email);
+  }
+
+  @Public()
+  @SkipCsrf()
+  @UseGuards(AuthRateLimitGuard)
+  @Post("reset")
+  @HttpCode(200)
+  async reset(
+    @Body() dto: ResetDto,
+    @Req() req: Request,
+    @Res({ passthrough: true }) res: Response
+  ) {
+    const result = await this.auth.resetPassword(dto.token, dto.password);
+    const csrfToken = setAuthCookies(req, res, result.accessToken);
+    return { user: result.user, csrfToken };
   }
 
   @SkipCsrf()

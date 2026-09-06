@@ -61,6 +61,10 @@ export class UpsertEpisodeDto {
   publish?: "DRAFT" | "PUBLISHED" | "UNLISTED";
 
   @IsOptional()
+  @IsIn(["CANON", "FILLER", "RECAP"])
+  kind?: "CANON" | "FILLER" | "RECAP";
+
+  @IsOptional()
   @Transform(({ value }) => (value === "" || value == null ? undefined : Number(value)))
   @IsInt()
   @Min(0)

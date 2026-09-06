@@ -4,9 +4,6 @@ import { hash } from "bcrypt";
 import { PrismaPg } from "@prisma/adapter-pg";
 import { AirSeason, PrismaClient, PublishStatus, Role, TitleStatus, TitleType } from "@prisma/client";
 
-const DEMO_VIDEO = "https://media.w3.org/2010/05/bunny/trailer.mp4";
-const DEMO_DUB = "https://media.w3.org/2010/05/sintel/trailer.mp4";
-
 function art(slug: string) {
   return {
     posterUrl: `/posters/${slug}.jpg`,
@@ -392,8 +389,7 @@ async function main() {
         const kinds: Array<"SUB" | "DUB"> = title.dub ? ["SUB", "DUB"] : ["SUB"];
         for (const audioKind of kinds) {
           const outroStartSec = Math.max(episode.durationSec - 90, 120);
-          const demoVideo = audioKind === "DUB" ? DEMO_DUB : DEMO_VIDEO;
-          const demoCaptions = audioKind === "SUB" ? "/captions/sample.vtt" : null;
+          const demoCaptions = null;
           const existing = await prisma.episode.findUnique({
             where: { seasonId_number_audioKind_language: { seasonId: row.id, number, audioKind, language: "" } }
           });
@@ -410,7 +406,7 @@ async function main() {
               outroStartSec,
               audioKind,
               airDate,
-              ...(keepVideo ? {} : { videoUrl: demoVideo }),
+              ...(keepVideo ? {} : { videoUrl: null }),
               ...(keepCaptions ? {} : { subtitleUrl: demoCaptions })
             },
             create: {
@@ -423,7 +419,7 @@ async function main() {
               introStartSec: 40,
               introEndSec: 95,
               outroStartSec,
-              videoUrl: demoVideo,
+              videoUrl: null,
               audioKind,
               airDate,
               subtitleUrl: demoCaptions

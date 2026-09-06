@@ -1,5 +1,4 @@
 import { Logger } from "@nestjs/common";
-import { JwtService } from "@nestjs/jwt";
 import {
   ConnectedSocket,
   MessageBody,
@@ -12,7 +11,9 @@ import {
 import { Server, Socket } from "socket.io";
 
 import { ACCESS_COOKIE } from "../auth/auth.constants";
-import type { AuthUser, JwtPayload } from "../auth/auth.types";
+import { AuthService } from "../auth/auth.service";
+import type { AuthUser } from "../auth/auth.types";
+import { corsOriginSetting } from "../security/cors-origins";
 import { TogetherService } from "./together.service";
 
 type SocketData = {
@@ -22,7 +23,17 @@ type SocketData = {
 
 @WebSocketGateway({
   namespace: "/together",
-  cors: { origin: true, credentials: true },
+  cors: {
+    origin: (origin: string | undefined, callback: (err: Error | null, allow?: boolean) => void) => {
+      const setting = corsOriginSetting();
+      if (setting === true || !origin) {
+        callback(null, true);
+        return;
+      }
+      callback(null, Array.isArray(setting) && setting.includes(origin));
+    },
+    credentials: true
+  },
   transports: ["websocket"]
 })
 export class TogetherGateway implements OnGatewayConnection, OnGatewayDisconnect {
@@ -33,11 +44,11 @@ export class TogetherGateway implements OnGatewayConnection, OnGatewayDisconnect
 
   constructor(
     private readonly together: TogetherService,
-    private readonly jwt: JwtService
+    private readonly auth: AuthService
   ) {}
 
-  handleConnection(client: Socket) {
-    client.data.user = this.readUser(client);
+  async handleConnection(client: Socket) {
+    client.data.user = await this.readUser(client);
   }
 
   async handleDisconnect(client: Socket) {
@@ -113,22 +124,12 @@ export class TogetherGateway implements OnGatewayConnection, OnGatewayDisconnect
     });
   }
 
-  private readUser(client: Socket): AuthUser | null {
+  private readUser(client: Socket) {
     const header = client.handshake.headers.cookie;
-    if (!header) return null;
+    if (!header) return Promise.resolve(null);
     const token = cookieValue(header, ACCESS_COOKIE);
-    if (!token) return null;
-    try {
-      const payload = this.jwt.verify<JwtPayload>(token);
-      return {
-        id: payload.sub,
-        email: payload.email,
-        displayName: payload.displayName,
-        role: payload.role
-      };
-    } catch {
-      return null;
-    }
+    if (!token) return Promise.resolve(null);
+    return this.auth.userFromToken(token);
   }
 }
 

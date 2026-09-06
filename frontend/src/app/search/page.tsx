@@ -76,7 +76,7 @@ export default async function SearchPage({
           ) : null}
         </>
       ) : (
-        <p className="mt-10 text-sm text-muted">Type a title. Filters show after you search.</p>
+        <p className="mt-10 text-sm text-muted">Type a title. Recent searches appear as you focus the box. Filters show after you search. Press ? for shortcuts.</p>
       )}
     </main>
   );

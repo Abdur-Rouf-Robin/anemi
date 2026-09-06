@@ -3,7 +3,9 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 
+import { displayTitle } from "@/lib/display-title";
 import type { TitleCard } from "@/lib/types";
+import { useLocale } from "@/lib/use-locale";
 import { firstEpisodeId } from "@/lib/utils";
 
 import { PosterArt } from "./poster-card";
@@ -20,8 +22,10 @@ export function HeroCarousel({ items }: { items: TitleCard[] }) {
     return () => window.clearInterval(id);
   }, [items.length, paused]);
 
+  const locale = useLocale();
   if (!items.length) return null;
   const title = items[index] ?? items[0];
+  const heading = displayTitle(title, locale);
   const playId = firstEpisodeId(title);
   const playSub = firstEpisodeId(title, "SUB");
   const playDub = firstEpisodeId(title, "DUB");
@@ -40,14 +44,14 @@ export function HeroCarousel({ items }: { items: TitleCard[] }) {
       onMouseLeave={() => setPaused(false)}
     >
       <PosterArt
-        name={title.name}
+        name={heading}
         hue={title.hue}
         src={title.backdropUrl || title.posterUrl}
-        className="h-[min(72vh,640px)] w-full"
+        className="h-[min(58vh,420px)] w-full sm:h-[min(72vh,640px)]"
       />
       <div className="absolute inset-0 bg-linear-to-r from-canvas via-canvas/70 to-canvas/10" />
       <div className="absolute inset-0 bg-linear-to-t from-canvas via-transparent to-black/20" />
-      <div className="page-shell absolute inset-x-0 bottom-0 space-y-4 pb-8 sm:pb-12">
+      <div className="page-shell absolute inset-x-0 bottom-0 space-y-3 pb-6 sm:space-y-4 sm:pb-12">
         <div className="flex flex-wrap gap-1.5">
           {chips.map((chip) => (
             <span
@@ -67,8 +71,8 @@ export function HeroCarousel({ items }: { items: TitleCard[] }) {
             HD
           </span>
         </div>
-        <h1 className="max-w-3xl text-4xl font-semibold tracking-tight sm:text-6xl">{title.name}</h1>
-        <p className="max-w-xl text-sm text-white/75 sm:text-base">
+        <h1 className="max-w-3xl text-3xl font-semibold tracking-tight sm:text-6xl">{heading}</h1>
+        <p className="line-clamp-3 max-w-xl text-sm text-white/75 sm:line-clamp-none sm:text-base">
           {title.synopsis}
         </p>
         <div className="flex flex-wrap gap-2 pt-1">
@@ -84,13 +88,17 @@ export function HeroCarousel({ items }: { items: TitleCard[] }) {
                 Watch Dub
               </Link>
             </>
-          ) : (
+          ) : playId ? (
             <Link
-              href={playId ? `/watch/${playId}` : `/title/${title.slug}`}
+              href={`/watch/${playId}`}
               className="rounded-full bg-accent px-6 py-2.5 text-sm font-semibold text-accent-ink shadow-[0_10px_30px_color-mix(in_oklch,var(--color-accent)_40%,transparent)]"
             >
               Watch now
             </Link>
+          ) : (
+            <span className="rounded-full bg-white/10 px-6 py-2.5 text-sm font-semibold text-white/80 ring-1 ring-white/10">
+              Not available yet
+            </span>
           )}
           <Link href={`/title/${title.slug}`} className="rounded-full bg-white/10 px-6 py-2.5 text-sm font-semibold text-white backdrop-blur-sm ring-1 ring-white/10">
             Details

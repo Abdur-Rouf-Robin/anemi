@@ -21,14 +21,19 @@ export function formatClock(sec: number) {
 
 export function firstEpisodeId(
   title: {
-    seasons?: { episodes?: { id: string; audioKind?: string }[] }[];
+    seasons?: { episodes?: { id: string; audioKind?: string; videoUrl?: string | null }[] }[];
   },
   kind?: "SUB" | "DUB"
 ) {
-  const episodes = title.seasons?.[0]?.episodes ?? [];
+  const episodes = (title.seasons ?? []).flatMap((season) => season.episodes ?? []).filter(isPlayableEpisode);
   if (kind === "DUB") return episodes.find((item) => item.audioKind === "DUB")?.id ?? null;
   if (kind === "SUB") return episodes.find((item) => item.audioKind !== "DUB")?.id ?? episodes[0]?.id ?? null;
   return episodes.find((item) => item.audioKind !== "DUB")?.id ?? episodes[0]?.id ?? null;
+}
+
+export function isPlayableEpisode(item: { videoUrl?: string | null }) {
+  if (item.videoUrl === undefined) return true;
+  return Boolean(item.videoUrl);
 }
 
 export function formatAirDate(iso?: string | null) {

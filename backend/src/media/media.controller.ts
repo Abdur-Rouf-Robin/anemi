@@ -1,10 +1,15 @@
 import { Controller, Get, NotFoundException, Param, Req, Res } from "@nestjs/common";
+import { PublishStatus } from "@prisma/client";
 import type { Request, Response } from "express";
 import { createReadStream, existsSync, statSync } from "node:fs";
 import { extname, join } from "node:path";
 
+import type { AuthUser } from "../auth/auth.types";
 import { Public } from "../auth/decorators/public.decorator";
-import { artDir, episodeDir } from "./media.paths";
+import { PrismaService } from "../prisma/prisma.service";
+import { accelRedirect, shouldAccelMedia } from "./media-accel";
+import { canReadEpisodeMedia } from "./media-access";
+import { artDir, episodeDir, mediaRoot } from "./media.paths";
 
 const TYPES: Record<string, string> = {
   ".m3u8": "application/vnd.apple.mpegurl",
@@ -20,6 +25,17 @@ const TYPES: Record<string, string> = {
 
 function sendFile(path: string, req: Request, res: Response, cache: string) {
   const type = TYPES[extname(path)] ?? "application/octet-stream";
+  if (shouldAccelMedia(req)) {
+    const root = mediaRoot();
+    const relative = path.startsWith(root) ? path.slice(root.length).replace(/^\/+/, "") : "";
+    if (relative) {
+      res.setHeader("Content-Type", type);
+      res.setHeader("Cache-Control", cache);
+      res.setHeader("X-Accel-Redirect", accelRedirect(relative));
+      res.end();
+      return;
+    }
+  }
   const stat = statSync(path);
   res.setHeader("Content-Type", type);
   res.setHeader("Cache-Control", cache);
@@ -52,6 +68,8 @@ function sendFile(path: string, req: Request, res: Response, cache: string) {
 @Public()
 @Controller("media")
 export class MediaController {
+  constructor(private readonly prisma: PrismaService) {}
+
   @Get("art/:file")
   art(@Param("file") file: string, @Req() req: Request, @Res() res: Response) {
     if (file.includes("..") || file.includes("/")) throw new NotFoundException();
@@ -61,15 +79,28 @@ export class MediaController {
   }
 
   @Get(":episodeId/:file")
-  file(
+  async file(
     @Param("episodeId") episodeId: string,
     @Param("file") file: string,
-    @Req() req: Request,
+    @Req() req: Request & { user?: AuthUser },
     @Res() res: Response
   ) {
     if (file.includes("..") || file.includes("/")) throw new NotFoundException();
+    const episode = await this.prisma.episode.findUnique({
+      where: { id: episodeId },
+      select: {
+        publish: true,
+        season: { select: { title: { select: { publish: true } } } }
+      }
+    });
+    if (!episode) throw new NotFoundException();
+    if (!canReadEpisodeMedia(episode.publish, episode.season.title.publish, req.user)) {
+      throw new NotFoundException();
+    }
+    const published =
+      episode.publish === PublishStatus.PUBLISHED && episode.season.title.publish === PublishStatus.PUBLISHED;
     const path = join(episodeDir(episodeId), file);
     if (!existsSync(path)) throw new NotFoundException();
-    sendFile(path, req, res, "public, max-age=60");
+    sendFile(path, req, res, published ? "public, max-age=60" : "private, no-store");
   }
 }

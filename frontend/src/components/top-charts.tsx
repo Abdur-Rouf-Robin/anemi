@@ -25,7 +25,11 @@ export function TopCharts({
   return (
     <aside className="overflow-hidden rounded-xl bg-surface/80 p-4 ring-1 ring-white/8">
       <div className="flex items-center justify-between gap-2">
-        <h2 className="text-sm font-semibold tracking-tight">Top 10</h2>
+        <h2 className="text-sm font-semibold tracking-tight">
+          <Link href="/charts" className="hover:text-accent">
+            Top 10
+          </Link>
+        </h2>
         <div className="flex gap-1">
           {(
             [

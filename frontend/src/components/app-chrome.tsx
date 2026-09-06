@@ -19,7 +19,7 @@ export function AppChrome({
   const admin = path.startsWith("/admin");
 
   return (
-    <div className={admin ? undefined : "pb-16 md:pb-0"}>
+    <div className={admin ? undefined : "pb-[calc(4.75rem+env(safe-area-inset-bottom,0px))] md:pb-0"}>
       {admin ? null : banner}
       {admin ? null : header}
       {children}

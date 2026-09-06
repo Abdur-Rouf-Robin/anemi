@@ -28,13 +28,16 @@ else
   exit 1
 fi
 
-if [[ -d data/media ]]; then
-  tar -C data -czf "${dest}/media.tgz" media
+media="${MEDIA_ROOT:-data/media}"
+if [[ "${BACKUP_MEDIA:-0}" == "1" && -d "$media" ]]; then
+  mkdir -p "${dest}/media"
+  rsync -a "$media/" "${dest}/media/"
+  echo "Media copied with rsync."
 else
-  echo "No data/media directory; skipped media archive."
+  echo "Skipped media (set BACKUP_MEDIA=1 or run npm run backup:media)."
 fi
 
 echo "Backup written to ${dest}"
 echo "Restore:"
 echo "  pg_restore --clean --if-exists --no-owner --dbname=\"\$DATABASE_URL\" ${dest}/anemi.dump"
-echo "  tar -C data -xzf ${dest}/media.tgz"
+echo "  rsync -a ${dest}/media/ ${media}/"

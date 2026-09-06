@@ -25,6 +25,11 @@ export class QueryTitlesDto {
   genre?: string;
 
   @IsOptional()
+  @IsString()
+  @MaxLength(80)
+  studio?: string;
+
+  @IsOptional()
   @IsIn(SORTS)
   sort?: (typeof SORTS)[number];
 

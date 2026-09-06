@@ -210,6 +210,18 @@ export class LibraryService {
     };
   }
 
+  async clearHistory(userId: string) {
+    await this.prisma.watchHistory.deleteMany({ where: { userId } });
+    await this.prisma.watchProgress.deleteMany({ where: { userId } });
+    return { ok: true };
+  }
+
+  async removeHistory(userId: string, episodeId: string) {
+    await this.prisma.watchHistory.deleteMany({ where: { userId, episodeId } });
+    await this.prisma.watchProgress.deleteMany({ where: { userId, episodeId } });
+    return { ok: true };
+  }
+
   async progressFor(userId: string, episodeId: string) {
     return this.prisma.watchProgress.findUnique({
       where: { userId_episodeId: { userId, episodeId } }

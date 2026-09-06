@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 
 import { AdminButton, AdminCard, AdminHeader, AdminNotice, AdminTable, Field, Td, Th, adminControl } from "@/components/admin/ui";
+import { AdminOnly } from "@/components/admin-only";
 import { api } from "@/lib/client-api";
 
 type Row = { id: string; email: string; createdAt: string };
@@ -70,6 +71,7 @@ export default function AdminNewsletterPage() {
   }
 
   return (
+    <AdminOnly>
     <main className="space-y-8">
       <AdminHeader
         title="Newsletter"
@@ -155,5 +157,6 @@ export default function AdminNewsletterPage() {
         </tbody>
       </AdminTable>
     </main>
+    </AdminOnly>
   );
 }

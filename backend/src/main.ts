@@ -5,6 +5,7 @@ import compression from "compression";
 import cookieParser from "cookie-parser";
 
 import { AppModule } from "./app.module";
+import { corsOrigins } from "./security/cors-origins";
 import { initSentry } from "./security/sentry";
 import { securityHeaders } from "./security/security-headers.middleware";
 
@@ -18,10 +19,7 @@ async function bootstrap() {
   app.use(cookieParser());
   app.use(compression());
 
-  const originList =
-    process.env.CORS_ORIGINS?.split(",")
-      .map((o) => o.trim())
-      .filter(Boolean) ?? [];
+  const originList = corsOrigins();
 
   if (process.env.NODE_ENV === "production" && originList.length === 0) {
     console.error("[anemi] CORS_ORIGINS must be set in production.");

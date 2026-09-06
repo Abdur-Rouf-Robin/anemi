@@ -43,8 +43,17 @@ export async function api<T>(path: string, init: RequestInit = {}): Promise<T> {
   return (await res.json()) as T;
 }
 
+export type Access = {
+  signupMode: "open" | "invite" | "closed";
+  resetEnabled: boolean;
+};
+
 export function getMe() {
   return api<{ user: Me | null }>("/auth/me");
+}
+
+export function getAccess() {
+  return api<Access>("/auth/access");
 }
 
 export async function uploadFile<T>(path: string, file: File): Promise<T> {
@@ -53,6 +62,31 @@ export async function uploadFile<T>(path: string, file: File): Promise<T> {
   if (csrf) headers.set("x-csrf-token", csrf);
   const body = new FormData();
   body.append("file", file);
+  const res = await fetch(`/api${path}`, {
+    method: "POST",
+    headers,
+    body,
+    credentials: "include"
+  });
+  if (!res.ok) {
+    let message = `Upload failed (${res.status})`;
+    try {
+      const payload = (await res.json()) as { message?: string };
+      if (payload.message) message = payload.message;
+    } catch {
+      /* keep */
+    }
+    throw new Error(message);
+  }
+  return (await res.json()) as T;
+}
+
+export async function uploadFiles<T>(path: string, files: File[]): Promise<T> {
+  const headers = new Headers();
+  const csrf = csrfToken();
+  if (csrf) headers.set("x-csrf-token", csrf);
+  const body = new FormData();
+  for (const file of files) body.append("files", file);
   const res = await fetch(`/api${path}`, {
     method: "POST",
     headers,
