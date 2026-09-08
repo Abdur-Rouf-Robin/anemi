@@ -3,7 +3,8 @@ import Link from "next/link";
 import type { TitleCard } from "@/lib/types";
 import { firstEpisodeId, formatAirTime } from "@/lib/utils";
 
-import { PosterArt } from "./poster-card";
+import { PosterArt, PosterHover } from "./poster-card";
+import { StatusDot, TitleMeta } from "./title-meta";
 import { SectionHead } from "./section-head";
 
 export function AiringSoonRail({ items, flush = false }: { items: TitleCard[]; flush?: boolean }) {
@@ -19,40 +20,30 @@ export function AiringSoonRail({ items, flush = false }: { items: TitleCard[]; f
       <div className="no-scrollbar flex gap-4 overflow-x-auto pb-2">
         {cards.map((title) => {
           const playId = firstEpisodeId(title);
-          const date = title.nextAirDate ? new Date(title.nextAirDate) : null;
-          const stamp = date
-            ? date.toLocaleString("en-GB", {
-                weekday: "short",
-                day: "numeric",
-                month: "short",
-                hour: "numeric",
-                minute: "2-digit"
-              })
-            : "Soon";
           return (
             <Link
               key={title.id}
               href={playId ? `/watch/${playId}` : `/title/${title.slug}`}
-              className="card-panel w-[220px] shrink-0 overflow-hidden sm:w-[240px]"
+              className="group w-[160px] shrink-0 sm:w-[176px]"
             >
-              <div className="relative aspect-video">
+              <div className="relative aspect-2/3 overflow-hidden rounded-[10px]">
                 <PosterArt
                   name={title.name}
                   hue={title.hue}
-                  src={title.backdropUrl || title.posterUrl}
+                  src={title.posterUrl || title.backdropUrl}
                   className="absolute inset-0"
+                  overlay={false}
                 />
-                <span className="absolute top-2 left-2 rounded-md bg-black/70 px-2 py-0.5 text-[11px] font-semibold text-white">
-                  {stamp}
-                </span>
+                <PosterHover titleId={title.id} />
               </div>
-              <div className="p-3">
-                <p className="line-clamp-2 text-sm font-semibold">{title.name}</p>
-                <p className="mt-1 text-xs text-muted">
-                  {title.episodeCount ? `EP ${title.episodeCount}` : title.type}
-                  {title.nextAirDate ? ` · ${formatAirTime(title.nextAirDate)}` : ""}
-                </p>
-              </div>
+              <p className="mt-1.5 flex items-center gap-1.5">
+                <StatusDot status={title.status} />
+                <span className="truncate text-[13px] font-semibold group-hover:text-[#eab308]">{title.name}</span>
+              </p>
+              <TitleMeta title={title} className="mt-1" />
+              {title.nextAirDate ? (
+                <p className="mt-1 text-[11px] text-muted">{formatAirTime(title.nextAirDate)}</p>
+              ) : null}
             </Link>
           );
         })}

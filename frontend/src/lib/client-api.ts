@@ -6,6 +6,7 @@ export type Me = {
   displayName: string;
   role: "VIEWER" | "MEMBER" | "MODERATOR" | "ADMIN";
   mfaEnabled?: boolean;
+  createdAt?: string;
 };
 
 function csrfToken() {

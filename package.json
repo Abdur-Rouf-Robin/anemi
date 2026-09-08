@@ -19,6 +19,7 @@
     "start:backend": "npm run start -w anemi-backend",
     "start:frontend": "npm run start -w anemi-frontend",
     "prod": "bash scripts/prod.sh",
+    "pm2:restart": "bash scripts/pm2-restart-anemi.sh",
     "backup": "bash scripts/backup.sh",
     "backup:media": "BACKUP_MEDIA=1 bash scripts/backup.sh",
     "prod:check": "bash scripts/prod-check.sh",

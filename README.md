@@ -27,6 +27,14 @@ npm run dev:frontend
 
 Open http://127.0.0.1:3100
 
+After you change code on this host, rebuild and reload PM2 with one command:
+
+```bash
+./scripts/pm2-restart-anemi.sh
+```
+
+`./scripts/pm2-restart-vms.sh` is the same script (alias). Use `ANEMI_FORCE_REBUILD=1` to rebuild even when sources look unchanged.
+
 First seed creates `admin@anemi.local`. Change that password and turn on MFA before anyone else uses the box. Seed does not reset an existing admin password.
 
 ## What it does

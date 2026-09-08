@@ -5,6 +5,7 @@ import { useMemo, useState } from "react";
 
 import { PageIntro } from "@/components/page-intro";
 import { api } from "@/lib/client-api";
+import { TitleHitRow } from "@/components/poster-card";
 import type { TitleCard, TitleDetail } from "@/lib/types";
 import { audioTrackLabel } from "@/lib/utils";
 
@@ -76,7 +77,7 @@ export default function TogetherPage() {
                     pickTitle(title.slug);
                   }}
                 >
-                  {title.name}
+                  <TitleHitRow title={title} />
                 </button>
               </li>
             ))}

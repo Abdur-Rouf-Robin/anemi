@@ -13,7 +13,7 @@ export function ClearHistory() {
     <button
       type="button"
       disabled={pending}
-      className="text-xs text-muted hover:text-ink disabled:opacity-60"
+      className="filter-btn disabled:opacity-60"
       onClick={() => {
         if (!confirm("Clear watch history and resume points on this account?")) return;
         setPending(true);

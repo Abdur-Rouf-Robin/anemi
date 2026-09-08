@@ -1,6 +1,7 @@
 import { cookies } from "next/headers";
 
 import { demoHome, episodeById, filterTitles, titleBySlug } from "./demo-catalog";
+import { defaultPrefs } from "./prefs";
 import type {
   EpisodeCard,
   HomePayload,
@@ -69,6 +70,14 @@ async function fetchJson<T>(path: string, authed = false, revalidate = 30): Prom
 
 export async function getLibrary(): Promise<LibraryPayload | null> {
   return fetchJson<LibraryPayload>("/library", true);
+}
+
+export async function getMe() {
+  return fetchJson<{ user: { id: string; displayName: string; email: string; role: string; createdAt?: string } | null }>(
+    "/auth/me",
+    true,
+    0
+  );
 }
 
 export async function getPlaylists(): Promise<Playlist[] | null> {
@@ -166,7 +175,7 @@ export async function getTitles(search: {
 }
 
 export async function getTitle(slug: string): Promise<TitleDetail | null> {
-  return (await fetchJson<TitleDetail>(`/catalog/titles/${slug}`)) ?? (allowDemoFallback() ? titleBySlug(slug) : null);
+  return (await fetchJson<TitleDetail>(`/catalog/titles/${slug}`, false, 0)) ?? (allowDemoFallback() ? titleBySlug(slug) : null);
 }
 
 export async function getRandomTitle() {
@@ -209,13 +218,7 @@ export async function getStudio(slug: string) {
 
 export async function getPreferences(): Promise<Preferences> {
   return (
-    (await fetchJson<Preferences>("/preferences/me", true)) ?? {
-      autoPlay: true,
-      autoNext: true,
-      autoSkipIntro: true,
-      theme: "dark",
-      locale: "en"
-    }
+    (await fetchJson<Preferences>("/preferences/me", true)) ?? defaultPrefs
   );
 }
 

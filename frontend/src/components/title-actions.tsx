@@ -1,11 +1,13 @@
 "use client";
 
+import { Bell, Heart } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 
 import { PlaylistPicker } from "@/components/playlist-picker";
 import { api } from "@/lib/client-api";
 import type { ListStatus } from "@/lib/types";
+import { cn } from "@/lib/utils";
 
 const STATUSES: { value: ListStatus; label: string }[] = [
   { value: "WATCHING", label: "Watching" },
@@ -15,7 +17,15 @@ const STATUSES: { value: ListStatus; label: string }[] = [
   { value: "COMPLETED", label: "Completed" }
 ];
 
-export function TitleActions({ titleId, compact = false }: { titleId: string; compact?: boolean }) {
+export function TitleActions({
+  titleId,
+  compact = false,
+  variant = "default"
+}: {
+  titleId: string;
+  compact?: boolean;
+  variant?: "default" | "detail";
+}) {
   const router = useRouter();
   const [saved, setSaved] = useState(false);
   const [following, setFollowing] = useState(false);
@@ -77,6 +87,47 @@ export function TitleActions({ titleId, compact = false }: { titleId: string; co
       >
         {ready && saved ? "In watchlist" : "+ Watchlist"}
       </button>
+    );
+  }
+
+  if (variant === "detail") {
+    return (
+      <div className="flex flex-wrap items-center gap-2">
+        <select
+          value={listStatus ?? ""}
+          onChange={(event) => void setStatus(event.target.value as ListStatus | "")}
+          className="h-10 rounded-lg bg-elevated px-3 text-sm font-semibold ring-1 ring-line"
+        >
+          <option value="">Add to Collection</option>
+          {STATUSES.map((item) => (
+            <option key={item.value} value={item.value}>
+              {item.label}
+            </option>
+          ))}
+        </select>
+        <button
+          type="button"
+          aria-label={saved ? "Saved" : "Favorite"}
+          onClick={() => void toggle("later")}
+          className={cn(
+            "inline-flex size-10 items-center justify-center rounded-lg ring-1 ring-line",
+            saved ? "bg-ink text-accent-ink" : "bg-elevated text-muted hover:text-ink"
+          )}
+        >
+          <Heart className={cn("size-4", saved && "fill-current")} />
+        </button>
+        <button
+          type="button"
+          aria-label={following ? "Following" : "Notify"}
+          onClick={() => void toggle("follow")}
+          className={cn(
+            "inline-flex size-10 items-center justify-center rounded-lg ring-1 ring-line",
+            following ? "bg-ink text-accent-ink" : "bg-elevated text-muted hover:text-ink"
+          )}
+        >
+          <Bell className="size-4" />
+        </button>
+      </div>
     );
   }
 

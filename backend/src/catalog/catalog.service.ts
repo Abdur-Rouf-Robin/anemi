@@ -453,7 +453,9 @@ export class CatalogService {
                 outroStartSec: true,
                 subtitleUrl: true,
                 videoUrl: true,
-                kind: true
+                kind: true,
+                viewCount: true,
+                _count: { select: { comments: true } }
               }
             }
           }
@@ -463,7 +465,13 @@ export class CatalogService {
     if (!row) throw new NotFoundException("Title not found");
     return {
       ...mapTitle(row),
-      seasons: row.seasons
+      seasons: row.seasons.map((season) => ({
+        ...season,
+        episodes: season.episodes.map((episode) => {
+          const { _count, ...rest } = episode;
+          return { ...rest, commentCount: _count.comments };
+        })
+      }))
     };
   }
 
@@ -475,23 +483,7 @@ export class CatalogService {
         season: {
           include: {
             title: {
-              select: {
-                id: true,
-                slug: true,
-                name: true,
-                nameJa: true,
-                hue: true,
-                type: true,
-                studio: true,
-                ageRating: true,
-                scoreSum: true,
-                scoreCount: true,
-                posterUrl: true,
-                backdropUrl: true,
-                synopsis: true,
-                year: true,
-                genres: { select: { genre: { select: { slug: true, name: true } } } }
-              }
+              select: titleCard
             },
             episodes: {
               where: published,
@@ -518,11 +510,7 @@ export class CatalogService {
       ...episode,
       season: {
         ...episode.season,
-        title: {
-          ...episode.season.title,
-          genres: episode.season.title.genres.map((row) => row.genre),
-          score: scoreAvg(episode.season.title.scoreSum, episode.season.title.scoreCount)
-        }
+        title: mapTitle(episode.season.title)
       }
     };
   }

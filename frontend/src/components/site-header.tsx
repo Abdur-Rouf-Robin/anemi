@@ -29,15 +29,17 @@ export async function SiteHeader() {
   const locale = (await cookies()).get("anemi_locale")?.value === "jp" ? "jp" : "en";
 
   return (
-    <header className="sticky top-0 z-40 border-b border-white/6 bg-canvas/80 pt-[env(safe-area-inset-top,0px)] backdrop-blur-xl">
-      <div className="page-shell flex h-14 items-center gap-2 sm:h-16 sm:gap-4">
-        <Link href="/" className="flex shrink-0 items-center gap-2 sm:gap-2.5">
-          <span className="grid size-8 place-items-center rounded-lg bg-accent text-sm font-bold text-accent-ink shadow-[0_8px_20px_color-mix(in_oklch,var(--color-accent)_45%,transparent)]">
+    <header className="sticky top-0 z-40 border-b border-white/6 bg-canvas/75 pt-[env(safe-area-inset-top,0px)] backdrop-blur-xl">
+      <div className="page-shell flex h-14 items-center gap-3 sm:h-[4.25rem] sm:gap-5">
+        <Link href="/" className="flex shrink-0 items-center gap-2.5">
+          <span className="grid size-8 place-items-center rounded-lg bg-accent text-[13px] font-bold text-accent-ink">
             A
           </span>
-          <span className="hidden text-[17px] font-semibold tracking-[0.14em] uppercase min-[380px]:inline">Anemi</span>
+          <span className="hidden text-[15px] font-semibold tracking-[0.18em] uppercase min-[380px]:inline">
+            Anemi
+          </span>
         </Link>
-        <nav className="hidden items-center gap-5 text-sm font-semibold tracking-wide uppercase xl:flex">
+        <nav className="hidden items-center gap-5 text-[13px] font-medium xl:flex">
           <HeaderLink href="/" exact>
             {t(locale, "Watch")}
           </HeaderLink>
@@ -56,7 +58,7 @@ export async function SiteHeader() {
           <HeaderLink href="/schedule">{t(locale, "Schedule")}</HeaderLink>
           {genres.length ? (
             <details className="relative">
-              <summary className="cursor-pointer list-none text-muted hover:text-ink">{t(locale, "Genre")}</summary>
+              <summary className="nav-underline cursor-pointer list-none text-muted hover:text-ink">{t(locale, "Genre")}</summary>
               <div className="card-panel absolute top-8 left-0 z-40 grid w-[30rem] grid-cols-2 gap-x-1 p-3">
                 {genres.map((genre) => (
                   <Link
@@ -76,14 +78,14 @@ export async function SiteHeader() {
             <SearchBox />
           </Suspense>
         </div>
-        <div className="ml-auto flex items-center gap-1.5">
-          <Link href="/random" className="hidden rounded-full px-3 py-1.5 text-xs font-semibold text-muted hover:text-ink lg:inline">
+        <div className="ml-auto flex items-center gap-1">
+          <Link href="/random" className="hidden px-2.5 py-1 text-[13px] font-medium text-muted hover:text-ink lg:inline">
             {t(locale, "Random")}
           </Link>
-          <Link href="/together" className="hidden rounded-full px-3 py-1.5 text-xs font-semibold text-muted hover:text-ink lg:inline">
+          <Link href="/together" className="hidden px-2.5 py-1 text-[13px] font-medium text-muted hover:text-ink lg:inline">
             {t(locale, "Watch together")}
           </Link>
-          <Link href="/community" className="hidden rounded-full px-3 py-1.5 text-xs font-semibold text-muted hover:text-ink xl:inline">
+          <Link href="/community" className="hidden px-2.5 py-1 text-[13px] font-medium text-muted hover:text-ink xl:inline">
             {t(locale, "Community")}
           </Link>
           <span className="hidden sm:contents">

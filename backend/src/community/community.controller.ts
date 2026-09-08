@@ -10,6 +10,7 @@ import { PublicWriteRateLimitGuard } from "../auth/guards/public-write-rate-limi
 import { StaffMfaGuard } from "../auth/guards/staff-mfa.guard";
 import { CommunityService } from "./community.service";
 import { CreatePostDto, CreateRequestDto, ContactDto, NewsletterDto, PreferencesDto } from "./dto/community.dto";
+import { defaultUserSettings } from "../lib/user-settings";
 
 @Controller()
 export class CommunityController {
@@ -86,7 +87,14 @@ export class CommunityController {
   @Get("preferences/me")
   async publicPrefs(@CurrentUser() user: AuthUser | null) {
     if (!user) {
-      return { autoPlay: true, autoNext: true, autoSkipIntro: true, theme: "dark", locale: "en" };
+      return {
+        autoPlay: false,
+        autoNext: true,
+        autoSkipIntro: false,
+        theme: "light",
+        locale: "en",
+        settings: defaultUserSettings
+      };
     }
     return this.community.preferences(user.id);
   }

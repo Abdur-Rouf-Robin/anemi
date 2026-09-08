@@ -2,21 +2,20 @@
 
 import { useState } from "react";
 
-import { PageIntro } from "@/components/page-intro";
+import { PageHeader } from "@/components/page-header";
 import { api } from "@/lib/client-api";
 
 export default function RequestPage() {
   const [note, setNote] = useState("");
 
   return (
-    <main className="page-shell max-w-lg py-10 pb-16">
-      <PageIntro
-        kicker="Catalog"
-        title="Request a title"
-        blurb="Ask for something you own or license to be added. We will not pull streams from other sites."
+    <main className="page-shell max-w-lg py-8 pb-16 xl:py-10">
+      <PageHeader
+        title="Request Series"
+        blurb="Ask staff to add a title you own or license. Anemi will not pull streams from other sites."
       />
       <form
-        className="card-panel mt-6 space-y-3 p-4"
+        className="card-panel space-y-3 p-4 sm:p-5"
         onSubmit={(event) => {
           event.preventDefault();
           const form = new FormData(event.currentTarget);
@@ -35,10 +34,10 @@ export default function RequestPage() {
             .catch((err: Error) => setNote(err.message));
         }}
       >
-        <input name="name" required minLength={2} placeholder="Title name" className="h-11 w-full rounded-xl bg-elevated px-3 text-sm ring-1 ring-white/10" />
-        <input name="referenceUrl" placeholder="Reference URL (optional)" className="h-11 w-full rounded-xl bg-elevated px-3 text-sm ring-1 ring-white/10" />
-        <textarea name="details" placeholder="Why it should be added" className="min-h-28 w-full rounded-xl bg-elevated px-3 py-2 text-sm ring-1 ring-white/10" />
-        <button type="submit" className="rounded-full bg-accent px-5 py-2 text-sm font-semibold text-accent-ink">
+        <input name="name" required minLength={2} placeholder="Series name" className="field-input" />
+        <input name="referenceUrl" placeholder="Reference URL (optional)" className="field-input" />
+        <textarea name="details" placeholder="Why it should be added" className="field-input min-h-28 py-2" />
+        <button type="submit" className="hero-cta h-10 px-4 text-sm font-semibold">
           Send request
         </button>
       </form>

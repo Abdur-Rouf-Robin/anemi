@@ -1,6 +1,7 @@
 import { Injectable } from "@nestjs/common";
 
 import { PrismaService } from "../prisma/prisma.service";
+import { sanitizeUserSettings } from "../lib/user-settings";
 import type { ContactDto, CreatePostDto, CreateRequestDto, NewsletterDto, PreferencesDto } from "./dto/community.dto";
 import { mailFrom, mailTransport, smtpConfigured } from "../admin/mailer";
 import { publicSiteUrl } from "../lib/public-site-url";
@@ -156,13 +157,35 @@ export class CommunityService {
         autoNext: true,
         autoSkipIntro: true,
         theme: true,
-        locale: true
+        locale: true,
+        settings: true
       }
     });
-    return user;
+    return {
+      autoPlay: user.autoPlay,
+      autoNext: user.autoNext,
+      autoSkipIntro: user.autoSkipIntro,
+      theme: user.theme,
+      locale: user.locale,
+      settings: sanitizeUserSettings(user.settings)
+    };
   }
 
-  updatePreferences(userId: string, dto: PreferencesDto) {
+  async updatePreferences(userId: string, dto: PreferencesDto) {
+    const current = dto.settings
+      ? await this.prisma.user.findUniqueOrThrow({
+          where: { id: userId },
+          select: { settings: true }
+        })
+      : null;
+    const settings = dto.settings
+      ? sanitizeUserSettings({
+          ...(typeof current?.settings === "object" && current?.settings && !Array.isArray(current.settings)
+            ? current.settings
+            : {}),
+          ...dto.settings
+        })
+      : undefined;
     return this.prisma.user.update({
       where: { id: userId },
       data: {
@@ -170,15 +193,24 @@ export class CommunityService {
         ...(dto.autoNext != null ? { autoNext: dto.autoNext } : {}),
         ...(dto.autoSkipIntro != null ? { autoSkipIntro: dto.autoSkipIntro } : {}),
         ...(dto.theme ? { theme: dto.theme } : {}),
-        ...(dto.locale ? { locale: dto.locale } : {})
+        ...(dto.locale ? { locale: dto.locale } : {}),
+        ...(settings ? { settings } : {})
       },
       select: {
         autoPlay: true,
         autoNext: true,
         autoSkipIntro: true,
         theme: true,
-        locale: true
+        locale: true,
+        settings: true
       }
-    });
+    }).then((user) => ({
+      autoPlay: user.autoPlay,
+      autoNext: user.autoNext,
+      autoSkipIntro: user.autoSkipIntro,
+      theme: user.theme,
+      locale: user.locale,
+      settings: sanitizeUserSettings(user.settings)
+    }));
   }
 }

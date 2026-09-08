@@ -1,9 +1,10 @@
 import Link from "next/link";
 
 import type { EpisodeCard } from "@/lib/types";
-import { cn, formatRelativeTime } from "@/lib/utils";
+import { cn } from "@/lib/utils";
 
-import { PosterArt } from "./poster-card";
+import { PosterArt, PosterHover } from "./poster-card";
+import { StatusDot, TitleMeta } from "./title-meta";
 import { SectionHead } from "./section-head";
 
 export function LatestReleaseGrid({
@@ -25,35 +26,31 @@ export function LatestReleaseGrid({
       {headed ? (
         <SectionHead kicker="Latest" title="Latest releases" href="/latest" hrefLabel="View all" />
       ) : null}
-      <div className={cn("grid gap-3", flush ? "grid-cols-2" : "sm:grid-cols-2 lg:grid-cols-3")}>
+      <div className={cn("grid gap-x-3.5 gap-y-5", flush ? "grid-cols-2 sm:grid-cols-3 xl:grid-cols-4" : "grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5")}>
         {cards.map((item) => (
           <Link
             key={item.episodeId}
             href={`/watch/${item.episodeId}`}
-            className="group overflow-hidden rounded-xl bg-surface/80 ring-1 ring-white/8"
+            className="group"
           >
-            <div className="relative aspect-video">
+            <div className="relative aspect-2/3 overflow-hidden rounded-[10px]">
               <PosterArt
                 name={item.title.name}
                 hue={item.title.hue}
-                src={item.title.backdropUrl || item.title.posterUrl}
-                className="absolute inset-0 transition-transform duration-300 group-hover:scale-[1.04]"
+                src={item.title.posterUrl || item.title.backdropUrl}
+                className="absolute inset-0"
+                overlay={false}
               />
-              <span className="absolute top-2 left-2 rounded bg-black/65 px-1.5 py-0.5 text-[10px] font-bold text-white">
-                {item.title.type === "SERIES" ? "TV" : item.title.type}
-              </span>
-              <span className="absolute right-2 bottom-2 rounded bg-accent px-1.5 py-0.5 text-[10px] font-bold text-accent-ink">
+              <PosterHover titleId={item.title.id} />
+              <span className="pointer-events-none absolute right-2 bottom-2 z-[2] rounded bg-black/70 px-1.5 py-0.5 text-[10px] font-bold text-white">
                 EP {item.number}
               </span>
             </div>
-            <div className="p-2.5">
-              <h3 className="line-clamp-2 text-sm font-semibold group-hover:text-accent">{item.title.name}</h3>
-              <p className="mt-1 text-[11px] text-muted">
-                {item.audioKind === "DUB" ? "Dub" : "Sub"}
-                {item.durationSec ? ` · ${Math.round(item.durationSec / 60)}m` : ""}
-                {formatRelativeTime(item.airDate) ? ` · ${formatRelativeTime(item.airDate)}` : ""}
-              </p>
-            </div>
+            <h3 className="mt-1.5 flex items-center gap-1.5 text-[13px] font-semibold">
+              <StatusDot status={item.title.status} />
+              <span className="truncate group-hover:text-[#eab308]">{item.title.name}</span>
+            </h3>
+            <TitleMeta title={item.title} className="mt-1" />
           </Link>
         ))}
       </div>

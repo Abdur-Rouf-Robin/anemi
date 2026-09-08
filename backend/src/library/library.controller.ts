@@ -1,6 +1,7 @@
 import { Body, Controller, Delete, Get, Param, Put } from "@nestjs/common";
 
 import { CurrentUser } from "../auth/decorators/current-user.decorator";
+import { Public } from "../auth/decorators/public.decorator";
 import type { AuthUser } from "../auth/auth.types";
 import { ImportAniListDto, ImportListDto, ListStatusDto } from "./dto/list-status.dto";
 import { ProgressDto } from "./dto/progress.dto";
@@ -13,6 +14,17 @@ export class LibraryController {
   @Get()
   summary(@CurrentUser() user: AuthUser) {
     return this.library.summary(user.id);
+  }
+
+  @Get("stats")
+  stats(@CurrentUser() user: AuthUser) {
+    return this.library.stats(user.id);
+  }
+
+  @Public()
+  @Get("profile/:userId")
+  publicProfile(@CurrentUser() user: AuthUser | null, @Param("userId") userId: string) {
+    return this.library.publicProfile(userId, user?.id);
   }
 
   @Get("export")

@@ -14,8 +14,8 @@ export function SiteFooter({ genres = [] }: { genres?: { slug: string; name: str
   const tx = useT();
 
   return (
-    <footer className="mt-12 border-t border-white/8 bg-black/35 sm:mt-16">
-      <div className="page-shell grid gap-8 border-b border-white/8 py-10 lg:grid-cols-[minmax(0,1.2fr)_minmax(0,1fr)] lg:items-center">
+    <footer className="mt-12 border-t border-line bg-surface sm:mt-16">
+      <div className="page-shell grid gap-8 border-b border-line py-10 lg:grid-cols-[minmax(0,1.2fr)_minmax(0,1fr)] lg:items-center">
         <div>
           <p className="section-kicker">Weekly dispatch</p>
           <h2 className="mt-2 text-2xl font-semibold tracking-tight sm:text-4xl">The week ahead, curated.</h2>
@@ -42,9 +42,9 @@ export function SiteFooter({ genres = [] }: { genres?: { slug: string; name: str
             type="email"
             required
             placeholder="your@email.com"
-            className="h-12 flex-1 rounded-xl bg-elevated px-4 text-sm ring-1 ring-white/10"
+            className="h-12 flex-1 rounded-xl bg-elevated px-4 text-sm ring-1 ring-line"
           />
-          <button type="submit" className="h-12 rounded-xl bg-accent px-5 text-sm font-semibold text-accent-ink">
+          <button type="submit" className="btn btn-primary h-12 rounded-xl px-5 text-sm">
             Subscribe
           </button>
         </form>
@@ -54,7 +54,7 @@ export function SiteFooter({ genres = [] }: { genres?: { slug: string; name: str
       <div className="page-shell grid gap-10 py-12 sm:grid-cols-2 lg:grid-cols-5">
         <div className="lg:col-span-1">
           <p className="flex items-center gap-2 font-semibold">
-            <span className="grid size-8 place-items-center rounded-md bg-accent text-xs font-bold text-accent-ink">A</span>
+            <span className="brand-mark grid size-8 place-items-center rounded-md text-xs font-bold">A</span>
             ANEMI
           </p>
           <p className="mt-3 max-w-xs text-sm text-muted">
@@ -104,7 +104,7 @@ export function SiteFooter({ genres = [] }: { genres?: { slug: string; name: str
       </div>
 
       {genres.length ? (
-        <div className="page-shell border-t border-white/8 py-6">
+        <div className="page-shell border-t border-line py-6">
           <button
             type="button"
             onClick={() => setOpenGenres((value) => !value)}
@@ -125,7 +125,7 @@ export function SiteFooter({ genres = [] }: { genres?: { slug: string; name: str
         </div>
       ) : null}
 
-      <div className="page-shell border-t border-white/8 py-6 text-xs text-muted">
+      <div className="page-shell border-t border-line py-6 text-xs text-muted">
         © {new Date().getFullYear()} Anemi. Catalog for owned or licensed video.
       </div>
     </footer>

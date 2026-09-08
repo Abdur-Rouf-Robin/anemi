@@ -4,16 +4,15 @@ import { CommunityRail } from "@/components/community-rail";
 import { FeaturedProgramme } from "@/components/featured-programme";
 import { GenreShowcase } from "@/components/genre-showcase";
 import { HeroCarousel } from "@/components/hero-carousel";
+import { HomeContinue } from "@/components/home-continue";
 import { LatestReleaseGrid } from "@/components/latest-release-grid";
 import { MediaRail } from "@/components/media-rail";
 import { PopularNow } from "@/components/popular-now";
-import { SearchBox } from "@/components/search-box";
 import { WatchNextRail } from "@/components/watch-next-rail";
 import { WeekSchedule } from "@/components/week-schedule";
 import { getCommunityPosts, getGenres, getHomeState, getLatest, getLibrary, getRelated, getSchedule } from "@/lib/api";
 import { DEFAULT_HOME_SECTIONS } from "@/lib/home-config";
 import { uniqueById } from "@/lib/utils";
-import { Suspense } from "react";
 
 export default async function HomePage() {
   const [{ home, live: catalogLive }, library, latest, genres, schedule, posts] = await Promise.all([
@@ -34,17 +33,10 @@ export default async function HomePage() {
   const genreTabs = home.featuredGenres?.length ? home.featuredGenres : genres.slice(0, 6);
 
   return (
-    <main className="space-y-10 pb-20">
-      <div className="page-shell pt-4 md:hidden">
-        <Suspense>
-          <SearchBox />
-        </Suspense>
-      </div>
-
+    <main className="pb-20">
       {show.hero ? <HeroCarousel items={heroes} /> : null}
-      {show.continueWatching && continueItems.length ? (
-        <MediaRail title="Continue watching" items={continueItems} href="/library" />
-      ) : null}
+      <div className={`relative z-10 space-y-10${show.continueWatching && continueItems.length ? " -mt-6 sm:-mt-10" : " pt-4"}`}>
+      {show.continueWatching && continueItems.length ? <HomeContinue items={continueItems} /> : null}
 
       {show.schedule && (schedule?.days ?? []).length ? <WeekSchedule days={schedule?.days ?? []} compact /> : null}
 
@@ -87,6 +79,7 @@ export default async function HomePage() {
           Nothing published yet. Sign in as staff and add a title you own or license in the CMS.
         </p>
       ) : null}
+      </div>
     </main>
   );
 }

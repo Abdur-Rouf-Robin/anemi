@@ -20,7 +20,7 @@ import { useCallback, useEffect, useRef, useState, type RefObject } from "react"
 import { useSession } from "@/components/session-provider";
 import { api } from "@/lib/client-api";
 import type { Preferences } from "@/lib/types";
-import { readLocalPrefs, writeLocalPrefs } from "@/lib/prefs";
+import { defaultPrefs, mergePrefs, prefsPutBody, readLocalPrefs, writeLocalPrefs } from "@/lib/prefs";
 import { cn, formatClock, audioTrackLabel, captionTrackLabel } from "@/lib/utils";
 
 import { attachAudioGraph, EQ_BANDS, EQ_PRESETS, type AudioGraph } from "./audio-graph";
@@ -111,13 +111,8 @@ export function MediaPlayer({
   const router = useRouter();
   const { user } = useSession();
   const viewedRef = useRef(false);
-  const [prefs, setPrefs] = useState<Preferences>({
-    autoPlay: true,
-    autoNext: true,
-    autoSkipIntro: true,
-    theme: "dark",
-    locale: "en"
-  });
+  const [prefs, setPrefs] = useState<Preferences>(defaultPrefs);
+  const prefsRef = useRef(prefs);
   const [playing, setPlaying] = useState(false);
   const [current, setCurrent] = useState(0);
   const [duration, setDuration] = useState(durationSec ?? 0);
@@ -134,6 +129,7 @@ export function MediaPlayer({
   const [quality, setQuality] = useState(-1);
   const [buffering, setBuffering] = useState(false);
   const [showSkip, setShowSkip] = useState(Boolean(introEndSec));
+  const [showSkipEnding, setShowSkipEnding] = useState(Boolean(outroStartSec));
   const [countdown, setCountdown] = useState<number | null>(null);
   const [theater, setTheater] = useState(false);
   const [mediaError, setMediaError] = useState("");
@@ -154,6 +150,7 @@ export function MediaPlayer({
   const [lightsOff, setLightsOff] = useState(false);
   const lastSent = useRef(0);
   const skippedIntro = useRef(false);
+  const skippedEnding = useRef(false);
   const hideTimer = useRef<number>(0);
   const loadedSrcRef = useRef("");
   const holdClearRef = useRef<number>(0);
@@ -179,6 +176,9 @@ export function MediaPlayer({
     if (!Number.isNaN(storedVol) && storedVol >= 0) setVolume(Math.min(1, storedVol));
     if (storedSpeed) setSpeed(storedSpeed);
     if (storedCap === "off") setCaptions(false);
+    else if (storedCap === "on") setCaptions(true);
+    else setCaptions(local.enableSubtitles);
+    if (local.viewMode === "theater") setTheater(true);
     if (storedFit === "contain" || storedFit === "cover" || storedFit === "fill") setFit(storedFit);
     if (storedCapSize === "sm" || storedCapSize === "md" || storedCapSize === "lg") setCaptionSize(storedCapSize);
     if (localStorage.getItem("anemi-loop") === "on") setLoop(true);
@@ -196,14 +196,38 @@ export function MediaPlayer({
 
   useEffect(() => {
     if (!user) return;
-    api<Preferences>("/preferences/me")
-      .then(setPrefs)
+    api<Preferences & { settings?: unknown }>("/preferences/me")
+      .then((remote) => setPrefs(mergePrefs(readLocalPrefs(), remote)))
       .catch(() => undefined);
   }, [user?.id]);
 
   useEffect(() => {
     viewedRef.current = false;
   }, [episodeId]);
+
+  useEffect(() => {
+    prefsRef.current = prefs;
+  }, [prefs]);
+
+  useEffect(() => {
+    if (!prefs.pauseWhenNotInFocus) return;
+    function onVis() {
+      const node = videoRef.current;
+      if (!node) return;
+      if (document.hidden) node.pause();
+    }
+    document.addEventListener("visibilitychange", onVis);
+    return () => document.removeEventListener("visibilitychange", onVis);
+  }, [prefs.pauseWhenNotInFocus]);
+
+  const autoFsOnce = useRef(false);
+  useEffect(() => {
+    if (!playing || !prefs.autoFullscreen || autoFsOnce.current) return;
+    autoFsOnce.current = true;
+    const box = boxRef.current;
+    const target = prefs.fullscreenTarget === "document" ? document.documentElement : box;
+    if (target && !document.fullscreenElement) void target.requestFullscreen();
+  }, [playing, prefs.autoFullscreen]);
 
   useEffect(() => {
     if (!playing || viewedRef.current || !episodeId) return;
@@ -285,7 +309,11 @@ export function MediaPlayer({
     if (src.includes(".m3u8")) {
       void import("hls.js").then(({ default: Hls }) => {
         if (Hls.isSupported()) {
-          const instance = new Hls({ capLevelToPlayerSize: true });
+          const instance = new Hls({
+            capLevelToPlayerSize: true,
+            maxBufferSize: prefs.progressiveLoading ? prefs.chunkSizeKb * 1024 : 60 * 1000 * 1000,
+            maxBufferLength: prefs.progressiveLoading ? 20 : 60
+          });
           instance.loadSource(src);
           instance.attachMedia(node);
           instance.on(Hls.Events.MANIFEST_PARSED, ready);
@@ -303,12 +331,14 @@ export function MediaPlayer({
       hlsRef.current?.destroy();
       hlsRef.current = null;
     };
-  }, [src]);
+  }, [src, prefs.progressiveLoading, prefs.chunkSizeKb]);
 
   useEffect(() => {
     skippedIntro.current = false;
+    skippedEnding.current = false;
     setCountdown(null);
     setShowSkip(Boolean(introEndSec));
+    setShowSkipEnding(Boolean(outroStartSec));
     const node = videoRef.current;
     if (!node || !src) return;
     const switched = episodeReadyRef.current;
@@ -443,8 +473,11 @@ export function MediaPlayer({
 
   useEffect(() => {
     function onPrefs() {
-      setPrefs(readLocalPrefs());
+      const next = readLocalPrefs();
+      setPrefs(next);
+      prefsRef.current = next;
     }
+    onPrefs();
     window.addEventListener("anemi-prefs", onPrefs);
     return () => window.removeEventListener("anemi-prefs", onPrefs);
   }, []);
@@ -480,7 +513,7 @@ export function MediaPlayer({
           episodeId,
           positionSec: Math.floor(node.currentTime),
           durationSec: Math.floor(node.duration || durationSec || 1),
-          completed
+          completed: completed || (node.duration > 0 && (node.currentTime / node.duration) * 100 >= prefsRef.current.watchedThreshold)
         })
       });
     } catch {
@@ -509,13 +542,14 @@ export function MediaPlayer({
   function toggleFs() {
     const box = boxRef.current;
     if (!box) return;
+    const target = prefs.fullscreenTarget === "document" ? document.documentElement : box;
     if (document.fullscreenElement) void document.exitFullscreen();
-    else void box.requestFullscreen();
+    else void target.requestFullscreen();
   }
 
   function togglePiP() {
     const node = videoRef.current;
-    if (!node || !document.pictureInPictureEnabled) return;
+    if (!node || !document.pictureInPictureEnabled || prefs.disableFloatingPlayer) return;
     if (document.pictureInPictureElement) void document.exitPictureInPicture();
     else void node.requestPictureInPicture();
   }
@@ -669,8 +703,8 @@ export function MediaPlayer({
       if (key === " " || key === "k") {
         event.preventDefault();
         togglePlay();
-      } else if (key === "arrowleft" || key === "j") seek(node.currentTime - 10);
-      else if (key === "arrowright" || key === "l") seek(node.currentTime + 10);
+      } else if (key === "arrowleft" || key === "j") seek(node.currentTime - prefsRef.current.seekBackSeconds);
+      else if (key === "arrowright" || key === "l") seek(node.currentTime + prefsRef.current.seekForwardSeconds);
       else if (key === "arrowup") {
         event.preventDefault();
         setVolume((v) => Math.min(1, v + 0.1));
@@ -698,6 +732,30 @@ export function MediaPlayer({
     };
   }, [nextHref, prevHref, go]);
 
+  const introFrom = introStartSec ?? 0;
+  const inIntro = Boolean(introEndSec && current > 0.4 && current >= introFrom && current < introEndSec);
+  const nearOutro = Boolean(outroStartSec ? current >= outroStartSec : duration && current > duration - 25);
+
+  useEffect(() => {
+    if (!inIntro || prefs.autoSkipIntro || !introEndSec) return;
+    const show = window.setTimeout(() => setShowSkip(true), 0);
+    const hide = window.setTimeout(() => setShowSkip(false), prefs.skipOpeningButtonDuration * 1000);
+    return () => {
+      window.clearTimeout(show);
+      window.clearTimeout(hide);
+    };
+  }, [inIntro, introEndSec, episodeId, prefs.autoSkipIntro, prefs.skipOpeningButtonDuration]);
+
+  useEffect(() => {
+    if (!nearOutro || prefs.autoSkipEnding || !outroStartSec) return;
+    const show = window.setTimeout(() => setShowSkipEnding(true), 0);
+    const hide = window.setTimeout(() => setShowSkipEnding(false), prefs.skipEndingButtonDuration * 1000);
+    return () => {
+      window.clearTimeout(show);
+      window.clearTimeout(hide);
+    };
+  }, [nearOutro, outroStartSec, episodeId, prefs.autoSkipEnding, prefs.skipEndingButtonDuration]);
+
   if (!src) {
     return (
       <div className="flex aspect-video items-center justify-center rounded-lg bg-black text-center ring-1 ring-white/10">
@@ -715,13 +773,6 @@ export function MediaPlayer({
 
   const pct = duration ? (current / duration) * 100 : 0;
   const bufPct = duration ? (buffered / duration) * 100 : 0;
-  const introFrom = introStartSec ?? 0;
-  const inIntro = Boolean(
-    introEndSec && current > 0.4 && current >= introFrom && current < introEndSec
-  );
-  const nearOutro = Boolean(
-    outroStartSec ? current >= outroStartSec : duration && current > duration - 25
-  );
 
   const hasCues = Boolean((localCues ?? cues).length || captionSrc || captionOptions.length);
 
@@ -730,9 +781,10 @@ export function MediaPlayer({
     setPrefs((prev) => {
       const merged = { ...prev, ...next };
       writeLocalPrefs(merged);
+      prefsRef.current = merged;
       return merged;
     });
-    void api("/preferences", { method: "PUT", body: JSON.stringify(next) }).catch(() => undefined);
+    void api("/preferences", { method: "PUT", body: JSON.stringify(prefsPutBody({ ...prefs, ...next })) }).catch(() => undefined);
   }
 
   const menuItems: PlayerMenuItem[] = [
@@ -767,8 +819,8 @@ export function MediaPlayer({
             { id: "jump-outro", label: "Jump to ending", disabled: !outroStartSec, run: () => outroStartSec && seek(outroStartSec) }
           ]
         },
-        { id: "back", label: "Skip back 10s", hint: "J", run: () => seek(current - 10) },
-        { id: "fwd", label: "Skip forward 10s", hint: "L", run: () => seek(current + 10) },
+        { id: "back", label: `Skip back ${prefs.seekBackSeconds}s`, hint: "J", run: () => seek(current - prefs.seekBackSeconds) },
+        { id: "fwd", label: `Skip forward ${prefs.seekForwardSeconds}s`, hint: "L", run: () => seek(current + prefs.seekForwardSeconds) },
         {
           id: "speed-menu",
           label: "Speed",
@@ -1137,16 +1189,29 @@ export function MediaPlayer({
         preload="auto"
         loop={loop}
         onContextMenu={(event) => event.preventDefault()}
-        autoPlay={prefs.autoPlay && !mediaError}
+        autoPlay={(prefs.autoStart || prefs.autoPlay) && !mediaError}
         onClick={() => {
           if (ctx) {
             setCtx(null);
             return;
           }
           if (dragRef.current?.moved) return;
-          togglePlay();
+          if (prefs.tapToPlayPause) togglePlay();
         }}
-        onDoubleClick={toggleFs}
+        onDoubleClick={(event) => {
+          const rect = event.currentTarget.getBoundingClientRect();
+          const x = event.clientX - rect.left;
+          const third = rect.width / 3;
+          if (x < third && prefs.doubleTapSeekBack) {
+            seek(current - prefs.seekBackSeconds);
+            return;
+          }
+          if (x > third * 2 && prefs.doubleTapSeekForward) {
+            seek(current + prefs.seekForwardSeconds);
+            return;
+          }
+          toggleFs();
+        }}
         onError={() => {
           setPlaying(false);
           setBuffering(false);
@@ -1193,8 +1258,19 @@ export function MediaPlayer({
             node.currentTime = introEndSec;
             setShowSkip(false);
           }
+          if (
+            prefs.autoSkipEnding &&
+            outroStartSec &&
+            !skippedEnding.current &&
+            node.currentTime >= outroStartSec
+          ) {
+            skippedEnding.current = true;
+            setShowSkipEnding(false);
+            if (prefs.autoNext && (nextHref || playlist.length > 1)) playNext();
+            else node.currentTime = Math.max(0, (node.duration || duration) - 0.2);
+          }
           if ((prefs.autoNext || toolsRef.current.shuffle) && toolsRef.current.onEnded === "next" && (nextHref || playlist.length > 1) && nearOutro && countdown == null && node.duration - node.currentTime < 8) {
-            setCountdown(5);
+            setCountdown(prefs.autoNextDelay);
           }
           if (abRef.current.a != null && abRef.current.b != null && node.currentTime >= abRef.current.b) {
             node.currentTime = abRef.current.a;
@@ -1280,6 +1356,21 @@ export function MediaPlayer({
           }}
         >
           Skip intro
+        </button>
+      ) : null}
+
+      {showSkipEnding && outroStartSec && nearOutro && !prefs.autoSkipEnding ? (
+        <button
+          type="button"
+          className="absolute right-4 bottom-24 z-10 rounded-full bg-white/15 px-3 py-1.5 text-sm text-white backdrop-blur-md hover:bg-white/25"
+          onClick={() => {
+            skippedEnding.current = true;
+            setShowSkipEnding(false);
+            if (prefs.autoNext && (nextHref || playlist.length > 1)) playNext();
+            else seek((duration || outroStartSec) - 0.2);
+          }}
+        >
+          Skip ending
         </button>
       ) : null}
 
@@ -1375,10 +1466,10 @@ export function MediaPlayer({
           <IconButton label={playing ? "Pause" : "Play"} onClick={togglePlay}>
             {playing ? <Pause className="size-4" /> : <Play className="size-4 fill-current" />}
           </IconButton>
-          <IconButton label="Back 10s" onClick={() => seek(current - 10)}>
+          <IconButton label={`Back ${prefs.seekBackSeconds}s`} onClick={() => seek(current - prefs.seekBackSeconds)}>
             <SkipBack className="size-4" />
           </IconButton>
-          <IconButton label="Forward 10s" onClick={() => seek(current + 10)}>
+          <IconButton label={`Forward ${prefs.seekForwardSeconds}s`} onClick={() => seek(current + prefs.seekForwardSeconds)}>
             <SkipForward className="size-4" />
           </IconButton>
           {prevHref ? (

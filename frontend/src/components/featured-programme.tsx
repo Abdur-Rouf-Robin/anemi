@@ -4,9 +4,10 @@ import Link from "next/link";
 import { useState } from "react";
 
 import type { TitleCard } from "@/lib/types";
-import { cn, firstEpisodeId } from "@/lib/utils";
+import { cn, firstEpisodeId, formatCount, titleTypeLabel } from "@/lib/utils";
 
 import { PosterArt } from "./poster-card";
+import { TitleMeta } from "./title-meta";
 import { TitleActions } from "./title-actions";
 
 export function FeaturedProgramme({ items }: { items: TitleCard[] }) {
@@ -44,12 +45,13 @@ export function FeaturedProgramme({ items }: { items: TitleCard[] }) {
               {title.status === "AIRING" ? " · Now showing" : ""}
             </p>
             <h2 className="mt-2 text-2xl font-semibold tracking-tight sm:text-4xl">{title.name}</h2>
+            <TitleMeta title={title} className="mt-2" />
             <dl className="mt-4 grid grid-cols-2 gap-x-6 gap-y-2 text-sm sm:grid-cols-4">
               {[
-                ["Format", title.type === "SERIES" ? "Series" : title.type],
+                ["Format", titleTypeLabel(title.type)],
                 ["Year", title.year ? String(title.year) : "—"],
-                ["Score", title.score != null ? `★ ${title.score.toFixed(1)}` : "—"],
-                ["Studio", title.studio || "—"]
+                ["Views", formatCount(title.viewCount)],
+                ["Audio", [title.subCount ? "CC" : null, title.dubCount ? "DUB" : null].filter(Boolean).join(" · ") || "—"]
               ].map(([label, value]) => (
                 <div key={label}>
                   <dt className="text-[10px] font-semibold tracking-wider text-muted uppercase">{label}</dt>
@@ -67,7 +69,7 @@ export function FeaturedProgramme({ items }: { items: TitleCard[] }) {
                   Watch
                 </Link>
               ) : (
-                <span className="rounded-full bg-elevated px-6 py-2.5 text-sm text-muted ring-1 ring-white/10">
+                <span className="rounded-full bg-elevated px-6 py-2.5 text-sm text-muted ring-1 ring-line">
                   Not available yet
                 </span>
               )}
@@ -97,6 +99,7 @@ export function FeaturedProgramme({ items }: { items: TitleCard[] }) {
                         Popular #{String(i + 1).padStart(2, "0")}
                       </p>
                       <p className="truncate text-xs">{item.name}</p>
+                      <TitleMeta title={item} className="mt-0.5" />
                     </button>
                   ))}
                 </div>

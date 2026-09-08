@@ -2,45 +2,40 @@ import type { Metadata } from "next";
 import Link from "next/link";
 
 import { EmptyState } from "@/components/empty-state";
-import { PageIntro } from "@/components/page-intro";
+import { PageHeader } from "@/components/page-header";
 import { PosterArt } from "@/components/poster-card";
+import { SignInGate } from "@/components/sign-in-gate";
 import { getPlaylists } from "@/lib/api";
+import { getMeName } from "@/lib/server-session";
 
 import { CreatePlaylist } from "./create-playlist";
 
-export const metadata: Metadata = { title: "Playlists" };
+export const metadata: Metadata = { title: "Lists" };
 
 export default async function PlaylistsPage() {
   const lists = await getPlaylists();
+  const name = await getMeName();
 
   if (!lists) {
-    return (
-      <main className="page-shell max-w-lg py-16">
-        <PageIntro kicker="Lists" title="Playlists" blurb="Sign in to collect titles into your own shelves." />
-        <Link href="/account" className="mt-8 inline-flex rounded-full bg-accent px-5 py-2.5 text-sm font-semibold text-accent-ink">
-          Sign in
-        </Link>
-      </main>
-    );
+    return <SignInGate title="Lists" blurb="Sign in to organize titles into custom collections." />;
   }
 
   return (
-    <main className="page-shell space-y-8 py-8 pb-16">
-      <PageIntro
-        kicker="Lists"
-        title="Playlists"
-        blurb="Private collections you can share by link. Up to 20 lists, 48 titles each."
-        actions={
-          <Link href="/library" className="rounded-full bg-elevated px-4 py-1.5 text-sm ring-1 ring-white/10">
-            Back to library
-          </Link>
-        }
+    <main className="page-shell py-8 pb-16 xl:py-10">
+      <PageHeader
+        title={`${name}'s Lists`}
+        blurb="Organize your anime into custom collections"
+        actions={<CreatePlaylist />}
       />
-      <CreatePlaylist />
       {lists.length === 0 ? (
-        <EmptyState title="No playlists yet" blurb="Create one here, or tap Playlist on a title page." href="/browse" hrefLabel="Browse catalog" />
+        <EmptyState
+          title="No lists yet"
+          blurb="Create your first list to organize favorites, recommendations, or any custom collection."
+          href="/browse"
+          hrefLabel="Browse series"
+        />
       ) : (
-        <ul className="grid gap-3 sm:grid-cols-2">
+        <ul className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
           {lists.map((list) => (
             <li key={list.id}>
               <Link href={`/playlist/${list.id}`} className="card-panel flex gap-3 p-3 hover:bg-elevated">

@@ -6,6 +6,7 @@ import { useMemo, useState } from "react";
 import { episodeKindLabel } from "@/lib/display-title";
 import type { WatchEpisode } from "@/lib/types";
 import { cn, isPlayableEpisode } from "@/lib/utils";
+import { usePrefs } from "@/components/settings/settings-provider";
 
 const CHUNK = 40;
 
@@ -22,17 +23,28 @@ export function EpisodeGrid({
   defaultAudio?: "ALL" | "SUB" | "DUB";
   onPick?: (id: string) => void;
 }) {
+  const prefs = usePrefs();
   const hasDub = episodes.some((item) => item.audioKind === "DUB");
   const hasSub = episodes.some((item) => (item.audioKind ?? "SUB") === "SUB");
-  const [audio, setAudio] = useState<"ALL" | "SUB" | "DUB">(hasSub && hasDub ? defaultAudio : "ALL");
+  const preferred = prefs.defaultAudio === "eng" ? "DUB" : "SUB";
+  const [audio, setAudio] = useState<"ALL" | "SUB" | "DUB">(hasSub && hasDub ? (defaultAudio === "ALL" ? preferred : defaultAudio) : "ALL");
   const [query, setQuery] = useState("");
   const [chunk, setChunk] = useState(0);
+  const catalog = useMemo(
+    () =>
+      episodes.filter((item) => {
+        if (!prefs.showFillers && item.kind === "FILLER") return false;
+        if (!prefs.showRecaps && item.kind === "RECAP") return false;
+        return true;
+      }),
+    [episodes, prefs.showFillers, prefs.showRecaps]
+  );
   const items = useMemo(() => {
-    const lane = audio === "ALL" ? episodes : episodes.filter((item) => (item.audioKind ?? "SUB") === audio);
+    const lane = audio === "ALL" ? catalog : catalog.filter((item) => (item.audioKind ?? "SUB") === audio);
     const q = query.trim();
     if (!q) return lane;
     return lane.filter((item) => String(item.number).startsWith(q) || item.name.toLowerCase().includes(q.toLowerCase()));
-  }, [audio, episodes, query]);
+  }, [audio, catalog, query]);
   const pages = Math.max(1, Math.ceil(items.length / CHUNK));
   const pageIndex = Math.min(chunk, pages - 1);
   const visible = items.slice(pageIndex * CHUNK, pageIndex * CHUNK + CHUNK);

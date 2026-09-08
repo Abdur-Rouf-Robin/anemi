@@ -6,6 +6,7 @@ import { PrismaService } from "../prisma/prisma.service";
 import { fetchAniListList, normalizeTitle } from "./anilist";
 import type { ProgressDto } from "./dto/progress.dto";
 import type { ImportAniListDto, ImportListDto, ListStatusDto } from "./dto/list-status.dto";
+import { buildProfileStats, loadPublicProfile } from "./profile-stats";
 
 @Injectable()
 export class LibraryService {
@@ -26,7 +27,7 @@ export class LibraryService {
       this.prisma.watchHistory.findMany({
         where: { userId, episode: { publish: PublishStatus.PUBLISHED } },
         orderBy: { watchedAt: "desc" },
-        take: 24,
+        take: 100,
         include: {
           episode: {
             select: {
@@ -295,6 +296,16 @@ export class LibraryService {
     }
 
     return { imported, unmatched };
+  }
+
+  stats(userId: string) {
+    return buildProfileStats(this.prisma, userId);
+  }
+
+  async publicProfile(userId: string, viewerId?: string | null) {
+    const profile = await loadPublicProfile(this.prisma, userId, viewerId);
+    if (!profile) throw new NotFoundException("Profile not found");
+    return profile;
   }
 
   private async requireTitle(titleId: string) {

@@ -1,13 +1,13 @@
 import type { Metadata } from "next";
-import Link from "next/link";
 
 import { EmptyState } from "@/components/empty-state";
 import { LatestReleaseGrid } from "@/components/latest-release-grid";
-import { PageIntro } from "@/components/page-intro";
+import { PageHeader } from "@/components/page-header";
+import { SegmentedLinks } from "@/components/segmented-links";
+import { TitleLanguageToggle } from "@/components/title-language-toggle";
 import { getLatest } from "@/lib/api";
-import { cn } from "@/lib/utils";
 
-export const metadata: Metadata = { title: "Latest" };
+export const metadata: Metadata = { title: "Latest Episodes" };
 
 export default async function LatestPage({
   searchParams
@@ -15,50 +15,38 @@ export default async function LatestPage({
   searchParams: Promise<{ audio?: string }>;
 }) {
   const { audio } = await searchParams;
-  const data = await getLatest(audio, 48);
+  const data = await getLatest(audio, 56);
 
   return (
-    <main className="py-8 pb-16">
+    <main className="py-8 pb-16 xl:py-10">
       <div className="page-shell">
-        <PageIntro
-          kicker="Release desk"
-          title="Latest episodes"
-          blurb="Newest published episodes from titles you host — Sub, Dub, or both."
+        <PageHeader
+          title="Latest Episodes"
+          blurb="Newly released episodes from all your favorite shows"
           actions={
-            <div className="flex flex-wrap gap-2">
-              {[
-                { value: "", label: "All" },
-                { value: "SUB", label: "Sub" },
-                { value: "DUB", label: "Dub" }
-              ].map((item) => (
-                <Link
-                  key={item.label}
-                  href={item.value ? `/latest?audio=${item.value}` : "/latest"}
-                  className={cn(
-                    "rounded-full px-3 py-1.5 text-sm ring-1 ring-white/10",
-                    (audio ?? "") === item.value ? "chip-on" : "bg-elevated text-muted hover:text-ink"
-                  )}
-                >
-                  {item.label}
-                </Link>
-              ))}
-              <a href="/feed/latest.xml" className="rounded-full bg-elevated px-3 py-1.5 text-sm text-muted ring-1 ring-white/10 hover:text-ink">
-                RSS
-              </a>
-            </div>
+            <>
+              <SegmentedLinks
+                items={[
+                  { href: "/latest", label: "All", active: !audio },
+                  { href: "/latest?audio=SUB", label: "Sub", active: audio === "SUB" },
+                  { href: "/latest?audio=DUB", label: "Dub", active: audio === "DUB" }
+                ]}
+              />
+              <TitleLanguageToggle />
+            </>
           }
         />
       </div>
-      <div className="mt-8">
+      <div className="mt-2">
         {(data?.items ?? []).length ? (
           <LatestReleaseGrid items={data?.items ?? []} headed={false} />
         ) : (
           <div className="page-shell">
             <EmptyState
-              title="No episodes yet"
-              blurb="Publish a title and upload episode files in the CMS."
+              title="You've reached the end!"
+              blurb="Check back later for more episodes"
               href="/browse"
-              hrefLabel="Browse catalog"
+              hrefLabel="Browse series"
             />
           </div>
         )}

@@ -23,7 +23,7 @@ export function AzStrip({
         <Link
           href="/az"
           className={cn(
-            "rounded-md px-2.5 py-1 text-sm ring-1 ring-white/10",
+            "rounded-md px-2.5 py-1 text-sm ring-1 ring-line",
             !active || active === "All" ? "chip-on" : "bg-elevated text-muted hover:text-ink"
           )}
         >
@@ -34,7 +34,7 @@ export function AzStrip({
             key={item}
             href={`/az?letter=${encodeURIComponent(item)}`}
             className={cn(
-              "rounded-md px-2.5 py-1 text-sm ring-1 ring-white/10",
+              "rounded-md px-2.5 py-1 text-sm ring-1 ring-line",
               active === item ? "chip-on" : "bg-elevated text-muted hover:text-ink"
             )}
           >

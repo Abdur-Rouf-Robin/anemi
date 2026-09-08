@@ -4,7 +4,8 @@ import type { EpisodeCard } from "@/lib/types";
 import { t } from "@/lib/i18n";
 import { requestLocale } from "@/lib/request-locale";
 
-import { PosterArt } from "./poster-card";
+import { PosterArt, PosterHover } from "./poster-card";
+import { StatusDot, TitleMeta } from "./title-meta";
 
 export async function LatestEpisodeRail({
   items,
@@ -30,23 +31,25 @@ export async function LatestEpisodeRail({
       ) : null}
       <div className={`${shell} no-scrollbar flex gap-3 overflow-x-auto pb-1`.trim()}>
         {items.map((item) => (
-          <Link key={item.episodeId} href={`/watch/${item.episodeId}`} className="group w-[168px] shrink-0 sm:w-[188px]">
-            <div className="poster-frame relative aspect-video bg-elevated transition-transform duration-200 motion-safe:group-hover:-translate-y-1 motion-safe:group-hover:scale-[1.03]">
+          <Link key={item.episodeId} href={`/watch/${item.episodeId}`} className="group w-[160px] shrink-0 sm:w-[176px]">
+            <div className="relative aspect-2/3 overflow-hidden rounded-[10px]">
               <PosterArt
                 name={item.title.name}
                 hue={item.title.hue}
-                src={item.title.backdropUrl || item.title.posterUrl}
+                src={item.title.posterUrl || item.title.backdropUrl}
                 className="absolute inset-0"
+                overlay={false}
               />
-              <span className="absolute top-2 left-2 rounded-full bg-black/70 px-2 py-0.5 text-[11px] font-semibold text-white backdrop-blur-sm">
-                {item.audioKind === "DUB" ? "Dub" : "Sub"}
-              </span>
-              <span className="absolute right-2 bottom-2 rounded-md bg-accent px-1.5 py-0.5 text-[11px] font-semibold text-accent-ink">
+              <PosterHover titleId={item.title.id} />
+              <span className="pointer-events-none absolute right-2 bottom-2 z-[2] rounded bg-black/70 px-1.5 py-0.5 text-[10px] font-bold text-white">
                 EP {item.number}
               </span>
             </div>
-            <p className="mt-2 truncate text-sm font-medium">{item.title.name}</p>
-            <p className="truncate text-xs text-muted">{item.name}</p>
+            <p className="mt-1.5 flex items-center gap-1.5">
+              <StatusDot status={item.title.status} />
+              <span className="truncate text-[13px] font-semibold group-hover:text-[#eab308]">{item.title.name}</span>
+            </p>
+            <TitleMeta title={item.title} className="mt-1" />
           </Link>
         ))}
       </div>

@@ -7,8 +7,9 @@ import { CommandPalette } from "@/components/command-palette";
 import { ShortcutsHelp } from "@/components/shortcuts-help";
 import { LocaleProvider } from "@/components/locale-provider";
 import { SentryInit } from "@/components/sentry-init";
+import { SettingsModal } from "@/components/settings/settings-modal";
+import { SettingsProvider } from "@/components/settings/settings-provider";
 import { SiteFooter } from "@/components/site-footer";
-import { SiteHeader } from "@/components/site-header";
 import { SessionProvider } from "@/components/session-provider";
 import { ThemeProvider } from "@/components/theme-provider";
 import { getAnnouncement, getGenres } from "@/lib/api";
@@ -26,7 +27,7 @@ export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
   viewportFit: "cover",
-  themeColor: "#12101c"
+  themeColor: "#e8f1f7"
 };
 
 export const metadata: Metadata = {
@@ -54,10 +55,18 @@ export default async function RootLayout({ children }: { children: React.ReactNo
   const locale = (await cookies()).get("anemi_locale")?.value === "jp" ? "jp" : "en";
 
   return (
-    <html lang={locale === "jp" ? "ja" : "en"} className={geist.variable} suppressHydrationWarning>
+    <html lang={locale === "jp" ? "ja" : "en"} className={`${geist.variable} light`} suppressHydrationWarning>
+      <head>
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `(function(){try{var flagged=localStorage.getItem("anemi-chrome-light");var t=localStorage.getItem("anemi-theme");if(flagged==="1"&&t==="dark"){document.documentElement.classList.remove("light");document.documentElement.style.colorScheme="dark"}else{document.documentElement.classList.add("light");document.documentElement.style.colorScheme="light"}}catch(e){document.documentElement.classList.add("light");document.documentElement.style.colorScheme="light"}})();`
+          }}
+        />
+      </head>
       <body className="font-sans antialiased" suppressHydrationWarning>
         <SentryInit />
         <SessionProvider>
+        <SettingsProvider>
         <ThemeProvider />
         <LocaleProvider initial={locale} />
         <Suspense>
@@ -71,11 +80,12 @@ export default async function RootLayout({ children }: { children: React.ReactNo
               href={announcement?.announcementHref}
             />
           }
-          header={<SiteHeader />}
           footer={<SiteFooter genres={genres} />}
         >
           {children}
         </AppChrome>
+        <SettingsModal />
+        </SettingsProvider>
         </SessionProvider>
       </body>
     </html>

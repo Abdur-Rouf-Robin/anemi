@@ -23,7 +23,7 @@ export function CatalogPager({
   return (
     <nav className="mt-8 flex flex-wrap items-center justify-center gap-1.5" aria-label="Pages">
       {current > 1 ? (
-        <Link href={hrefFor(current - 1)} className="rounded-full bg-elevated px-3 py-1.5 text-sm text-muted ring-1 ring-white/10 hover:text-ink">
+        <Link href={hrefFor(current - 1)} className="rounded-full bg-elevated px-3 py-1.5 text-sm text-muted ring-1 ring-line hover:text-ink">
           Previous
         </Link>
       ) : null}
@@ -35,7 +35,7 @@ export function CatalogPager({
             <Link
               href={hrefFor(n)}
               className={cn(
-                "grid min-w-9 place-items-center rounded-full px-3 py-1.5 text-sm ring-1 ring-white/10",
+                "grid min-w-9 place-items-center rounded-full px-3 py-1.5 text-sm ring-1 ring-line",
                 n === current ? "chip-on" : "bg-elevated text-muted hover:text-ink"
               )}
             >
@@ -45,7 +45,7 @@ export function CatalogPager({
         );
       })}
       {current < pages ? (
-        <Link href={hrefFor(current + 1)} className="rounded-full bg-elevated px-3 py-1.5 text-sm text-muted ring-1 ring-white/10 hover:text-ink">
+        <Link href={hrefFor(current + 1)} className="rounded-full bg-elevated px-3 py-1.5 text-sm text-muted ring-1 ring-line hover:text-ink">
           Next
         </Link>
       ) : null}

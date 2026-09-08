@@ -7,6 +7,7 @@ import type { TitleCard } from "@/lib/types";
 import { cn, uniqueById } from "@/lib/utils";
 
 import { PosterArt } from "./poster-card";
+import { StatusDot, TitleMeta } from "./title-meta";
 import { SectionHead } from "./section-head";
 
 function ChartList({
@@ -19,30 +20,21 @@ function ChartList({
   return (
     <ol>
       {items.map((title, index) => (
-        <li key={title.id} className="border-b border-white/6 last:border-0">
-          <Link href={`/title/${title.slug}`} className="flex items-center gap-3 px-3 py-2.5 hover:bg-elevated/60">
+        <li key={title.id} className="border-b border-line last:border-0">
+          <Link href={`/title/${title.slug}`} className="group flex items-center gap-3 px-3 py-2.5 hover:bg-elevated/60">
             <span className={cn("w-6 text-sm font-semibold tabular-nums text-muted", rankClass)}>
               {String(index + 1).padStart(2, "0")}
             </span>
-            <PosterArt name={title.name} hue={title.hue} src={title.posterUrl} className="h-14 w-10 shrink-0 rounded-md" />
+            <PosterArt name={title.name} hue={title.hue} src={title.posterUrl} className="h-14 w-10 shrink-0 rounded-md" overlay={false} />
             <div className="min-w-0 flex-1">
-              <p className="truncate font-medium">{title.name}</p>
-              <p className="truncate text-[11px] text-muted">
-                {[title.type.replace("_", " "), title.studio, title.score != null ? `★ ${title.score.toFixed(1)}` : null]
-                  .filter(Boolean)
-                  .join(" · ")}
+              <p className="flex items-center gap-1.5">
+                <StatusDot status={title.status} />
+                <span className="truncate font-semibold group-hover:text-[#eab308]">{title.name}</span>
               </p>
+              <TitleMeta title={title} className="mt-0.5" />
             </div>
             {title.windowViews != null ? (
-              <span className="shrink-0 text-xs font-semibold text-accent">
-                {title.windowViews}
-                <span className="hidden sm:inline"> views</span>
-              </span>
-            ) : title.viewCount ? (
-              <span className="shrink-0 text-xs text-muted">
-                {title.viewCount}
-                <span className="hidden sm:inline"> views</span>
-              </span>
+              <span className="shrink-0 text-xs font-semibold text-accent">›</span>
             ) : (
               <span className="text-muted">›</span>
             )}
@@ -70,7 +62,7 @@ export function PopularNow({
   if (flush) {
     const items = rising.length ? rising : top;
     return (
-      <section className="overflow-hidden rounded-xl bg-surface/80 ring-1 ring-white/8">
+      <section className="overflow-hidden rounded-xl bg-surface ring-1 ring-line">
         <div className="flex items-center justify-between gap-2 px-4 pt-4 pb-2">
           <h2 className="text-lg font-semibold">Popular</h2>
           <div className="flex gap-1">

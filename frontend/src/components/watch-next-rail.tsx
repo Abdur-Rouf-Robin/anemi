@@ -3,12 +3,12 @@ import Link from "next/link";
 import type { TitleCard } from "@/lib/types";
 import { firstEpisodeId } from "@/lib/utils";
 
-import { PosterArt } from "./poster-card";
+import { PosterArt, PosterHover } from "./poster-card";
+import { StatusDot, TitleMeta } from "./title-meta";
 import { SectionHead } from "./section-head";
 
 export function WatchNextRail({
   items,
-  studio,
   name,
   flush
 }: {
@@ -33,23 +33,21 @@ export function WatchNextRail({
       <div className="no-scrollbar flex gap-4 overflow-x-auto pb-2">
         {cards.map((title) => {
           const playId = firstEpisodeId(title);
-          const sameStudio = Boolean(studio && title.studio && title.studio === studio);
           return (
             <Link
               key={title.id}
               href={playId ? `/watch/${playId}` : `/title/${title.slug}`}
-              className="w-[160px] shrink-0 sm:w-[176px]"
+              className="group w-[160px] shrink-0 sm:w-[176px]"
             >
-              <div className="poster-frame relative aspect-2/3">
-                <PosterArt name={title.name} hue={title.hue} src={title.posterUrl} className="absolute inset-0" />
-                <span className="absolute top-2 left-2 rounded-md bg-black/70 px-1.5 py-0.5 text-[10px] font-bold tracking-wide text-white uppercase">
-                  {sameStudio ? "Same studio" : "Similar genre"}
-                </span>
+              <div className="relative aspect-2/3 overflow-hidden rounded-[10px]">
+                <PosterArt name={title.name} hue={title.hue} src={title.posterUrl} className="absolute inset-0" overlay={false} />
+                <PosterHover titleId={title.id} />
               </div>
-              <p className="mt-2 line-clamp-2 text-sm font-semibold">{title.name}</p>
-              <p className="mt-0.5 text-xs text-muted">
-                {[title.studio, title.score != null ? `★ ${title.score.toFixed(1)}` : null].filter(Boolean).join(" · ")}
+              <p className="mt-1.5 flex items-center gap-1.5">
+                <StatusDot status={title.status} />
+                <span className="truncate text-[13px] font-semibold group-hover:text-[#eab308]">{title.name}</span>
               </p>
+              <TitleMeta title={title} className="mt-1" />
             </Link>
           );
         })}

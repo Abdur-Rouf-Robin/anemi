@@ -34,11 +34,11 @@ export function CreatePlaylist() {
         required
         minLength={2}
         maxLength={60}
-        placeholder="Weekend watch"
-        className="h-10 flex-1 rounded-full bg-elevated px-4 text-sm ring-1 ring-white/10"
+        placeholder="List name"
+        className="field-input h-10 flex-1 sm:max-w-xs"
       />
-      <button type="submit" disabled={pending} className="h-10 rounded-full bg-accent px-5 text-sm font-semibold text-accent-ink disabled:opacity-60">
-        {pending ? "Creating…" : "Create playlist"}
+      <button type="submit" disabled={pending} className="hero-cta h-10 px-4 text-sm font-semibold disabled:opacity-60">
+        {pending ? "Creating…" : "Create list"}
       </button>
       {note ? <p className="text-sm text-muted sm:w-full">{note}</p> : null}
     </form>

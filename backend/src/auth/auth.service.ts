@@ -151,13 +151,14 @@ export class AuthService {
     return this.toPublic(user);
   }
 
-  toPublic(user: { id: string; email: string; displayName: string; role: Role; mfaEnabled?: boolean }) {
+  toPublic(user: { id: string; email: string; displayName: string; role: Role; mfaEnabled?: boolean; createdAt?: Date }) {
     return {
       id: user.id,
       email: user.email,
       displayName: user.displayName,
       role: user.role,
-      mfaEnabled: Boolean(user.mfaEnabled)
+      mfaEnabled: Boolean(user.mfaEnabled),
+      createdAt: user.createdAt instanceof Date ? user.createdAt.toISOString() : undefined
     };
   }
 
@@ -180,6 +181,14 @@ export class AuthService {
         passwordHash: await hash(nextPassword, 12),
         tokenVersion: { increment: 1 }
       }
+    });
+    return this.issue(next);
+  }
+
+  async revokeOtherSessions(id: string) {
+    const next = await this.prisma.user.update({
+      where: { id },
+      data: { tokenVersion: { increment: 1 } }
     });
     return this.issue(next);
   }

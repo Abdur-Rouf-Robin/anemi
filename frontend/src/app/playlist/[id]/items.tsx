@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 
 import { PosterArt } from "@/components/poster-card";
+import { StatusDot, TitleMeta } from "@/components/title-meta";
 import { api } from "@/lib/client-api";
 import type { TitleCard } from "@/lib/types";
 
@@ -19,10 +20,13 @@ export function PlaylistItems({ playlistId, items }: { playlistId: string; items
         {items.map((title) => (
           <li key={title.id} className="card-panel flex items-center gap-3 p-3">
             <Link href={`/title/${title.slug}`} className="flex min-w-0 flex-1 items-center gap-3">
-              <PosterArt name={title.name} hue={title.hue} src={title.posterUrl} className="h-16 w-12 shrink-0 rounded-md" />
+              <PosterArt name={title.name} hue={title.hue} src={title.posterUrl} className="h-16 w-12 shrink-0 rounded-md" overlay={false} />
               <span className="min-w-0">
-                <span className="block truncate font-medium">{title.name}</span>
-                <span className="text-sm text-muted">{title.year ?? title.type}</span>
+                <span className="flex items-center gap-1.5">
+                  <StatusDot status={title.status} />
+                  <span className="block truncate font-medium">{title.name}</span>
+                </span>
+                <TitleMeta title={title} className="mt-0.5" />
               </span>
             </Link>
             <button

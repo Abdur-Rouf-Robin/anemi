@@ -22,10 +22,14 @@ export type TitleCard = {
   posterUrl?: string | null;
   backdropUrl?: string | null;
   score?: number | null;
+  scoreCount?: number;
+  rating?: number | null;
   nextAirDate?: string | null;
   subCount?: number;
   dubCount?: number;
+  likeCount?: number;
   episodeCount?: number;
+  episodeTotal?: number;
   windowViews?: number;
   genres: Genre[];
   seasons?: { number: number; episodes?: { id: string; audioKind?: string; videoUrl?: string | null }[] }[];
@@ -70,6 +74,7 @@ export type WatchPayload = {
     nameJa?: string | null;
     hue: number;
     type: string;
+    status?: string;
     studio?: string | null;
     ageRating?: string | null;
     score?: number | null;
@@ -77,6 +82,13 @@ export type WatchPayload = {
     backdropUrl?: string | null;
     synopsis?: string | null;
     year?: number | null;
+    viewCount?: number;
+    subCount?: number;
+    dubCount?: number;
+    likeCount?: number;
+    rating?: number | null;
+    episodeCount?: number;
+    episodeTotal?: number;
     genres?: Genre[];
   };
   episodes: WatchEpisode[];
@@ -113,6 +125,78 @@ export type LibraryPayload = {
   }[];
 };
 
+export type NamedCount = { slug: string; name: string; count: number };
+
+export type ActivityPoint = { key: string; label: string; count: number };
+
+export type ScoreStack = {
+  score: number;
+  WATCHING: number;
+  COMPLETED: number;
+  ON_HOLD: number;
+  DROPPED: number;
+  PLAN_TO_WATCH: number;
+};
+
+export type ProfileStats = {
+  shows: number;
+  episodes: number;
+  watchTimeSec: number;
+  meanScore: number;
+  currentStreak: number;
+  longestStreak: number;
+  completionRate: number;
+  favorites: number;
+  totalRewatches: number;
+  dropRate: number;
+  rewatchRate: number;
+  topStudio: string | null;
+  collection: { key: ListStatus; label: string; count: number }[];
+  scores: number[];
+  scoreStacks: ScoreStack[];
+  genres: NamedCount[];
+  themes: NamedCount[];
+  demographics: NamedCount[];
+  studios: NamedCount[];
+  activity: {
+    daily: ActivityPoint[];
+    weekly: ActivityPoint[];
+    monthly: ActivityPoint[];
+  };
+};
+
+export type ProfilePerson = {
+  id: string;
+  displayName: string;
+  role: string;
+  createdAt?: string;
+  avatar?: string;
+  banner?: string;
+  hue?: number;
+};
+
+export type ProfileVisibility = {
+  showBasicStats: boolean;
+  showFavorites: boolean;
+  showCompletionStats: boolean;
+  showActivityStats: boolean;
+  showActivityGraph: boolean;
+  showStatusDistribution: boolean;
+  showScoreDistribution: boolean;
+  showTopGenres: boolean;
+  showTopThemes: boolean;
+  showTopDemographics: boolean;
+  showTopStudios: boolean;
+};
+
+export type PublicProfile = {
+  private: boolean;
+  mine: boolean;
+  user: ProfilePerson;
+  stats: ProfileStats | null;
+  visibility: ProfileVisibility;
+};
+
 export type Episode = {
   id: string;
   number: number;
@@ -127,6 +211,9 @@ export type Episode = {
   introStartSec?: number | null;
   introEndSec?: number | null;
   videoUrl?: string | null;
+  subtitleUrl?: string | null;
+  viewCount?: number | null;
+  commentCount?: number | null;
 };
 
 export type TitleDetail = Omit<TitleCard, "seasons"> & {
@@ -156,10 +243,12 @@ export type HomePayload = {
   collections?: { name: string; slug: string; items: TitleCard[] }[];
 };
 
+import type { ExtraSettings } from "./user-settings";
+
 export type Preferences = {
   autoPlay: boolean;
   autoNext: boolean;
   autoSkipIntro: boolean;
   theme: "dark" | "light";
   locale: "en" | "jp";
-};
+} & ExtraSettings;

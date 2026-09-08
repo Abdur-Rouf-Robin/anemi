@@ -79,10 +79,10 @@ export function LibraryTools() {
   return (
     <div className="flex flex-col items-stretch gap-2 sm:items-end">
       <div className="flex flex-wrap gap-2">
-        <button type="button" onClick={() => void exportList()} className="rounded-full bg-elevated px-4 py-1.5 text-sm ring-1 ring-white/10">
+        <button type="button" onClick={() => void exportList()} className="filter-btn">
           Export
         </button>
-        <label className="rounded-full bg-elevated px-4 py-1.5 text-sm ring-1 ring-white/10">
+        <label className="filter-btn cursor-pointer">
           Import file
           <input
             type="file"
@@ -125,9 +125,9 @@ export function LibraryTools() {
           name="username"
           required
           placeholder="AniList username"
-          className="h-9 w-40 rounded-full bg-elevated px-3 text-sm ring-1 ring-white/10"
+          className="field-input h-9 w-40"
         />
-        <button type="submit" disabled={pending} className="rounded-full bg-accent px-4 text-sm font-semibold text-accent-ink disabled:opacity-60">
+        <button type="submit" disabled={pending} className="hero-cta h-9 px-4 text-sm font-semibold disabled:opacity-60">
           {pending ? "Importing…" : "Import AniList"}
         </button>
       </form>

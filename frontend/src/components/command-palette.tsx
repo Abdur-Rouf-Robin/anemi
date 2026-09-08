@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 
 import { api } from "@/lib/client-api";
+import { TitleHitRow } from "@/components/poster-card";
 import type { TitleCard } from "@/lib/types";
 
 export function CommandPalette() {
@@ -72,15 +73,17 @@ export function CommandPalette() {
               ["/discover", "Discover"],
               ["/schedule", "Schedule"],
               ["/az", "A–Z"],
-              ["/latest", "Latest"],
+              ["/latest", "Latest Episodes"],
               ["/charts", "Top 10"],
               ["/studios", "Studios"],
               ["/community", "Community"],
               ["/together", "Watch together"],
-              ["/notifications", "Notifications"],
-              ["/library", "Library"],
-              ["/library/playlists", "Playlists"],
-              ["/request", "Request"],
+              ["/notifications", "Updates"],
+              ["/settings", "Settings"],
+              ["/library", "Collection"],
+              ["/library/playlists", "Lists"],
+              ["/history", "Watch History"],
+              ["/request", "Request Series"],
               ["/admin", "CMS overview"],
               ["/admin/titles", "CMS titles"],
               ["/admin/requests", "CMS requests"],
@@ -98,6 +101,11 @@ export function CommandPalette() {
                 type="button"
                 className="w-full px-4 py-2.5 text-left text-sm text-muted hover:bg-elevated hover:text-ink"
                 onClick={() => {
+                  if (href === "/settings") {
+                    window.dispatchEvent(new CustomEvent("anemi-open-settings", { detail: "player" }));
+                    setOpen(false);
+                    return;
+                  }
                   router.push(href);
                   setOpen(false);
                 }}
@@ -116,8 +124,7 @@ export function CommandPalette() {
                   setOpen(false);
                 }}
               >
-                {item.name}
-                <span className="ml-2 text-xs text-muted">{item.year}</span>
+                <TitleHitRow title={item} />
               </button>
             </li>
           ))}

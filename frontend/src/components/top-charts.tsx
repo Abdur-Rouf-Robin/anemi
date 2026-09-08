@@ -7,6 +7,7 @@ import type { TitleCard } from "@/lib/types";
 import { cn, uniqueById } from "@/lib/utils";
 
 import { PosterArt } from "./poster-card";
+import { StatusDot, TitleMeta } from "./title-meta";
 
 type Tab = "day" | "week" | "month";
 
@@ -55,20 +56,21 @@ export function TopCharts({
       <ol className="mt-3 space-y-2">
         {items.map((title, index) => (
           <li key={title.id}>
-            <Link href={`/title/${title.slug}`} className="flex items-center gap-3 rounded-xl p-1.5 hover:bg-elevated">
+            <Link href={`/title/${title.slug}`} className="group flex items-center gap-3 rounded-xl p-1.5 hover:bg-elevated">
               <span className="w-5 text-center text-sm font-semibold text-accent">{index + 1}</span>
               <PosterArt
                 name={title.name}
                 hue={title.hue}
                 src={title.posterUrl}
                 className="h-12 w-9 shrink-0 rounded-md"
+                overlay={false}
               />
               <div className="min-w-0">
-                <p className="truncate text-sm font-medium">{title.name}</p>
-                <p className="text-[11px] text-muted">
-                  {title.ageRating ?? title.type}
-                  {title.score ? ` · ${title.score.toFixed(1)}` : ""}
+                <p className="flex items-center gap-1.5">
+                  <StatusDot status={title.status} />
+                  <span className="truncate text-sm font-semibold group-hover:text-[#eab308]">{title.name}</span>
                 </p>
+                <TitleMeta title={title} className="mt-0.5" />
               </div>
             </Link>
           </li>

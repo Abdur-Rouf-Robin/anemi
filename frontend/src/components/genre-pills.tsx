@@ -16,7 +16,7 @@ export function GenrePills({
         <Link
           key={genre.slug}
           href={`/browse?genre=${genre.slug}`}
-          className="shrink-0 rounded-full bg-elevated/80 px-3.5 py-1.5 text-sm text-muted ring-1 ring-white/10 backdrop-blur-sm hover:bg-elevated hover:text-ink"
+          className="shrink-0 rounded-full bg-elevated px-3.5 py-1.5 text-sm text-muted ring-1 ring-line hover:bg-surface hover:text-ink"
         >
           {genre.name}
         </Link>

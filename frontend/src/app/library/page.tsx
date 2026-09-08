@@ -1,97 +1,84 @@
 import type { Metadata } from "next";
-import Link from "next/link";
 
-import { ClearHistory } from "./clear-history";
-import { HistoryRow } from "./history-row";
 import { LibraryTools } from "./tools";
 import { EmptyState } from "@/components/empty-state";
-import { MediaRail } from "@/components/media-rail";
-import { PageIntro } from "@/components/page-intro";
+import { PageHeader } from "@/components/page-header";
+import { PosterGrid } from "@/components/poster-card";
+import { SegmentedLinks } from "@/components/segmented-links";
+import { SignInGate } from "@/components/sign-in-gate";
 import { getLibrary } from "@/lib/api";
+import { getMeName } from "@/lib/server-session";
+import type { ListStatus, TitleCard } from "@/lib/types";
 
-const LIST_LABELS = [
-  { key: "WATCHING", label: "Watching" },
-  { key: "PLAN_TO_WATCH", label: "Plan to watch" },
-  { key: "ON_HOLD", label: "On hold" },
-  { key: "DROPPED", label: "Dropped" },
-  { key: "COMPLETED", label: "Completed" }
-] as const;
+export const metadata: Metadata = { title: "Collection" };
 
-export const metadata: Metadata = { title: "Library" };
+const TABS: { id: "ALL" | ListStatus; label: string }[] = [
+  { id: "ALL", label: "All" },
+  { id: "WATCHING", label: "Watching" },
+  { id: "PLAN_TO_WATCH", label: "Plan to Watch" },
+  { id: "ON_HOLD", label: "On Hold" },
+  { id: "DROPPED", label: "Dropped" },
+  { id: "COMPLETED", label: "Completed" }
+];
 
-export default async function LibraryPage() {
+export default async function LibraryPage({
+  searchParams
+}: {
+  searchParams: Promise<{ status?: string }>;
+}) {
+  const { status } = await searchParams;
   const library = await getLibrary();
+  const name = await getMeName();
 
   if (!library) {
-    return (
-      <main className="page-shell max-w-lg py-16">
-        <PageIntro kicker="Lists" title="Library" blurb="Sign in to keep lists, history, and follows." />
-        <Link href="/account" className="mt-8 inline-flex rounded-full bg-accent px-5 py-2.5 text-sm font-semibold text-accent-ink">
-          Sign in
-        </Link>
-      </main>
-    );
+    return <SignInGate title="Collection" blurb="Sign in to keep the titles you are collecting." />;
   }
 
-  const empty =
-    !library.continueWatching.length &&
-    !library.later.length &&
-    !library.following.length &&
-    !library.history.length &&
-    LIST_LABELS.every((item) => !(library.lists?.[item.key] ?? []).length);
+  const lists = library.lists ?? {
+    WATCHING: [],
+    PLAN_TO_WATCH: [],
+    ON_HOLD: [],
+    DROPPED: [],
+    COMPLETED: []
+  };
+  const all = TABS.slice(1).flatMap((tab) => lists[tab.id as ListStatus] ?? []);
+  const tab = TABS.some((item) => item.id === status) ? (status as (typeof TABS)[number]["id"]) : "ALL";
+  const items: TitleCard[] = tab === "ALL" ? all : (lists[tab] ?? []);
+  const unique = items.filter((item, index, list) => list.findIndex((row) => row.id === item.id) === index);
 
   return (
-    <main className="space-y-10 py-8 pb-16">
-      <div className="page-shell flex flex-wrap items-end justify-between gap-3">
-        <PageIntro
-          kicker="Lists"
-          title="Library"
-          blurb="Continue, lists, follows, playlists, and AniList import."
-          actions={
-            <Link href="/library/playlists" className="rounded-full bg-elevated px-4 py-1.5 text-sm ring-1 ring-white/10">
-              Playlists
-            </Link>
-          }
+    <main className="page-shell py-8 pb-16 xl:py-10">
+      <PageHeader
+        title={`${name}'s Collection`}
+        blurb="Anime that you have collected"
+        uppercase
+      />
+      <div className="page-rule" />
+      <div className="mb-6">
+        <SegmentedLinks
+          items={TABS.map((item) => ({
+            href: item.id === "ALL" ? "/library" : `/library?status=${item.id}`,
+            label: item.label,
+            active: tab === item.id
+          }))}
         />
-        <LibraryTools />
       </div>
-      {empty ? (
-        <div className="page-shell">
-          <EmptyState
-            title="Nothing saved yet"
-            blurb="Play an episode or add a title to a list from its page."
-            href="/browse"
-            hrefLabel="Browse catalog"
-          />
+      {unique.length ? (
+        <PosterGrid items={unique} />
+      ) : (
+        <EmptyState
+          title="No anime found"
+          blurb="Add a title to a list from its page, then it will show up here."
+          href="/browse"
+          hrefLabel="Browse series"
+        />
+      )}
+      <details className="mt-10">
+        <summary className="cursor-pointer text-sm font-medium text-muted hover:text-ink">Import / Export</summary>
+        <div className="mt-3">
+          <LibraryTools />
         </div>
-      ) : null}
-      <MediaRail title="Continue watching" items={library.continueWatching} />
-      <MediaRail title="Watch later" items={library.later} />
-      <MediaRail title="Following" items={library.following} />
-      {LIST_LABELS.map((item) => (
-        <MediaRail key={item.key} title={item.label} items={library.lists?.[item.key] ?? []} />
-      ))}
-      <section className="page-shell">
-        <div className="flex items-end justify-between gap-3">
-          <h2 className="text-xl font-semibold tracking-tight">History</h2>
-          {library.history.length ? <ClearHistory /> : null}
-        </div>
-        <ul className="card-panel mt-4 divide-y divide-line overflow-hidden">
-          {library.history.length === 0 ? (
-            <li className="px-4 py-6 text-sm text-muted">Nothing watched yet.</li>
-          ) : (
-            library.history.map((row) => (
-              <HistoryRow
-                key={`${row.episodeId}-${row.watchedAt}`}
-                episodeId={row.episodeId}
-                episodeName={row.episodeName}
-                watchedAt={row.watchedAt}
-                title={row.title}
-              />
-            ))
-          )}
-        </ul>
-      </section>
+      </details>
     </main>
   );
 }

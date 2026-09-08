@@ -1,6 +1,11 @@
 import type { Locale } from "./i18n";
 
-export function displayTitle(title: { name: string; nameJa?: string | null }, locale?: Locale | string) {
+export function displayTitle(
+  title: { name: string; nameJa?: string | null },
+  locale?: Locale | string,
+  titleLanguage?: "english" | "romaji"
+) {
+  if (titleLanguage === "romaji") return title.name;
   if (locale === "jp" && title.nameJa?.trim()) return title.nameJa.trim();
   return title.name;
 }

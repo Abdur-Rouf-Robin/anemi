@@ -3,6 +3,8 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 
+import { Bell } from "lucide-react";
+
 import { api } from "@/lib/client-api";
 
 type Note = { id: string; title: string; body: string; href?: string | null; read: boolean };
@@ -39,12 +41,12 @@ export function NotificationsBell() {
           setOpen((value) => !value);
           if (!open) void load();
         }}
-        className="relative flex size-8 items-center justify-center rounded-full bg-elevated text-xs ring-1 ring-white/10"
+        className="icon-btn relative"
         aria-label="Notifications"
       >
-        !
+        <Bell className="size-4" />
         {unread ? (
-          <span className="absolute -top-1 -right-1 min-w-4 rounded-full bg-accent px-1 text-[10px] text-accent-ink">
+          <span className="absolute -top-0.5 -right-0.5 min-w-4 rounded-full bg-accent px-1 text-[10px] font-semibold text-accent-ink">
             {unread}
           </span>
         ) : null}

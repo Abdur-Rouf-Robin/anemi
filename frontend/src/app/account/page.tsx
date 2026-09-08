@@ -1,11 +1,10 @@
 "use client";
 
-import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 
+import { ProfileHome } from "./profile-home";
 import { MfaQr } from "@/components/mfa-qr";
-import { PageIntro } from "@/components/page-intro";
 import { useSession } from "@/components/session-provider";
 import { api, type Me } from "@/lib/client-api";
 
@@ -102,12 +101,6 @@ export default function AccountPage() {
     }
   }
 
-  async function logout() {
-    await api("/auth/logout", { method: "POST" });
-    session.setUser(null);
-    router.refresh();
-  }
-
   async function beginMfa() {
     setError("");
     try {
@@ -158,129 +151,80 @@ export default function AccountPage() {
 
   if (user) {
     return (
-      <main className="page-shell max-w-lg py-10 pb-16">
-        <PageIntro kicker="Account" title={user.displayName} blurb={user.email} />
-        <div className="mt-8 flex flex-wrap gap-3">
-          <Link href="/library" className="rounded-full bg-accent px-5 py-2 text-sm font-semibold text-accent-ink">
-            Library
-          </Link>
-          <Link href="/notifications" className="rounded-full bg-elevated px-5 py-2 text-sm ring-1 ring-white/10">
-            Notifications
-          </Link>
-          <Link href="/settings" className="rounded-full bg-elevated px-5 py-2 text-sm ring-1 ring-white/10">
-            Settings
-          </Link>
-          {user.role === "ADMIN" || user.role === "MODERATOR" ? (
-            <Link href="/admin" className="rounded-full bg-elevated px-5 py-2 text-sm ring-1 ring-white/10">
-              Admin
-            </Link>
-          ) : null}
-          <button type="button" onClick={() => void logout()} className="rounded-full px-5 py-2 text-sm text-muted">
-            Log out
-          </button>
-        </div>
-        {error ? <p className="mt-6 text-sm text-red-400">{error}</p> : null}
-        {mfaRequired && user && !user.mfaEnabled ? (
-          <p className="mt-6 rounded-xl bg-elevated px-3 py-2 text-sm ring-1 ring-white/10">
-            Turn on two-factor authentication below, then open the CMS.
-          </p>
+      <>
+        {mfaRequired && !user.mfaEnabled ? (
+          <p className="page-shell pt-6 text-sm text-muted">Turn on two-factor authentication in Settings before opening the CMS.</p>
         ) : null}
-        <section className="card-panel mt-10 p-4">
-          <h2 className="font-medium">Profile</h2>
-          <form
-            onSubmit={(event) => {
-              event.preventDefault();
-              const form = new FormData(event.currentTarget);
-              void api<{ user: Me }>("/auth/me", {
-                method: "PATCH",
-                body: JSON.stringify({ displayName: String(form.get("displayName") ?? "") })
-              })
-                .then((result) => {
-                  session.setUser(result.user);
-                  setError("");
-                })
-                .catch((err: Error) => setError(err.message));
-            }}
-            className="mt-3 flex flex-col gap-2 sm:flex-row"
-          >
-            <input
-              name="displayName"
-              defaultValue={user.displayName}
-              required
-              minLength={2}
-              className="h-11 flex-1 rounded-xl bg-elevated px-3 text-sm ring-1 ring-white/10"
-            />
-            <button type="submit" className="rounded-full bg-elevated px-4 text-sm ring-1 ring-white/10">
-              Save
-            </button>
-          </form>
-        </section>
-        <section className="card-panel mt-4 p-4">
-          <h2 className="font-medium">Password</h2>
-          <form
-            onSubmit={(event) => {
-              event.preventDefault();
-              const form = event.currentTarget;
-              const data = new FormData(form);
-              void api("/auth/password", {
-                method: "POST",
-                body: JSON.stringify({
-                  currentPassword: String(data.get("currentPassword") ?? ""),
-                  nextPassword: String(data.get("nextPassword") ?? "")
-                })
-              })
-                .then(() => {
-                  form.reset();
-                  setError("");
-                })
-                .catch((err: Error) => setError(err.message));
-            }}
-            className="mt-3 space-y-2"
-          >
-            <input name="currentPassword" type="password" required minLength={8} placeholder="Current password" className="h-11 w-full rounded-xl bg-elevated px-3 text-sm ring-1 ring-white/10" />
-            <input name="nextPassword" type="password" required minLength={10} placeholder="New password (10+ with a letter and a number)" className="h-11 w-full rounded-xl bg-elevated px-3 text-sm ring-1 ring-white/10" />
-            <button type="submit" className="rounded-full bg-elevated px-4 py-2 text-sm ring-1 ring-white/10">
-              Update password
-            </button>
-          </form>
-        </section>
-        <section className="card-panel mt-4 p-4">
-          <h2 className="font-medium">Two-factor authentication</h2>
-          <p className="mt-1 text-sm text-muted">
-            {user.mfaEnabled
-              ? "Authenticator app is on."
-              : user.role === "ADMIN" || user.role === "MODERATOR"
-                ? "Required for CMS access. Set this up before opening /admin."
-                : "Optional extra step after password."}
-          </p>
-          {!user.mfaEnabled && !setup ? (
-            <button type="button" onClick={() => void beginMfa()} className="mt-4 rounded-full bg-elevated px-4 py-2 text-sm ring-1 ring-white/10">
-              Set up MFA
-            </button>
-          ) : null}
-          {setup ? (
-            <form onSubmit={(event) => void confirmMfa(event)} className="mt-4 space-y-3">
-              <MfaQr otpauthUrl={setup.otpauthUrl} />
-              <p className="break-all text-xs text-muted">Secret: {setup.secret}</p>
-              <a href={setup.otpauthUrl} className="block text-sm text-accent">
-                Open in authenticator
-              </a>
-              <input name="code" inputMode="numeric" pattern="\d{6}" required placeholder="6-digit code" className="h-11 w-full rounded-xl bg-elevated px-3 text-sm ring-1 ring-white/10" />
-              <button type="submit" className="rounded-full bg-accent px-4 py-2 text-sm font-semibold text-accent-ink">
-                Confirm
-              </button>
-            </form>
-          ) : null}
-          {user.mfaEnabled && user.role !== "ADMIN" && user.role !== "MODERATOR" ? (
-            <form onSubmit={(event) => void disableMfa(event)} className="mt-4 flex gap-2">
-              <input name="code" inputMode="numeric" pattern="\d{6}" required placeholder="Code to turn off" className="h-11 flex-1 rounded-xl bg-elevated px-3 text-sm ring-1 ring-white/10" />
-              <button type="submit" className="rounded-full px-4 text-sm text-muted">
-                Disable
-              </button>
-            </form>
-          ) : null}
-        </section>
-      </main>
+        <ProfileHome user={user} />
+        <div className="page-shell max-w-lg pb-16">
+          <details className="card-panel p-4">
+            <summary className="cursor-pointer font-medium">Account security</summary>
+            {error ? <p className="mt-3 text-sm text-red-400">{error}</p> : null}
+            <section className="mt-4">
+              <h2 className="text-sm font-medium">Password</h2>
+              <form
+                onSubmit={(event) => {
+                  event.preventDefault();
+                  const form = event.currentTarget;
+                  const data = new FormData(form);
+                  void api("/auth/password", {
+                    method: "POST",
+                    body: JSON.stringify({
+                      currentPassword: String(data.get("currentPassword") ?? ""),
+                      nextPassword: String(data.get("nextPassword") ?? "")
+                    })
+                  })
+                    .then(() => {
+                      form.reset();
+                      setError("");
+                    })
+                    .catch((err: Error) => setError(err.message));
+                }}
+                className="mt-3 space-y-2"
+              >
+                <input name="currentPassword" type="password" required minLength={8} placeholder="Current password" className="field-input" />
+                <input name="nextPassword" type="password" required minLength={10} placeholder="New password (10+ with a letter and a number)" className="field-input" />
+                <button type="submit" className="filter-btn">
+                  Update password
+                </button>
+              </form>
+            </section>
+            <section className="mt-6">
+              <h2 className="text-sm font-medium">Two-factor authentication</h2>
+              <p className="mt-1 text-sm text-muted">
+                {user.mfaEnabled
+                  ? "Authenticator app is on."
+                  : user.role === "ADMIN" || user.role === "MODERATOR"
+                    ? "Required for CMS access."
+                    : "Optional extra step after password."}
+              </p>
+              {!user.mfaEnabled && !setup ? (
+                <button type="button" onClick={() => void beginMfa()} className="filter-btn mt-3">
+                  Set up MFA
+                </button>
+              ) : null}
+              {setup ? (
+                <form onSubmit={(event) => void confirmMfa(event)} className="mt-4 space-y-3">
+                  <MfaQr otpauthUrl={setup.otpauthUrl} />
+                  <p className="break-all text-xs text-muted">Secret: {setup.secret}</p>
+                  <input name="code" inputMode="numeric" pattern="\d{6}" required placeholder="6-digit code" className="field-input" />
+                  <button type="submit" className="hero-cta h-10 px-4 text-sm font-semibold">
+                    Confirm
+                  </button>
+                </form>
+              ) : null}
+              {user.mfaEnabled && user.role !== "ADMIN" && user.role !== "MODERATOR" ? (
+                <form onSubmit={(event) => void disableMfa(event)} className="mt-4 flex gap-2">
+                  <input name="code" inputMode="numeric" pattern="\d{6}" required placeholder="Code to turn off" className="field-input flex-1" />
+                  <button type="submit" className="filter-btn">
+                    Disable
+                  </button>
+                </form>
+              ) : null}
+            </section>
+          </details>
+        </div>
+      </>
     );
   }
 
@@ -289,87 +233,108 @@ export default function AccountPage() {
   const formMode = !canSignup && mode === "signup" ? "login" : mode;
 
   return (
-    <main className="page-shell max-w-lg py-10 pb-16">
-      <PageIntro
-        kicker="Account"
-        title={
-          mfaToken
-            ? "Authenticator code"
-            : formMode === "login"
-              ? "Sign in"
-              : formMode === "forgot"
-                ? "Reset password"
-                : "Create account"
-        }
-        blurb={
-          mfaToken
-            ? "Enter the 6-digit code from your app."
-            : formMode === "signup"
-              ? signupMode === "invite"
-                ? "You need an invite code from staff."
-                : "Create an account to save progress and lists."
-              : formMode === "forgot"
-                ? access?.resetEnabled
-                  ? "We will email a reset link if that account exists."
-                  : "Ask a site admin to reset your password. SMTP is not set."
-                : "Sign in to continue watching."
-        }
-      />
-      {!mfaToken ? (
-        <div className="mt-4 flex gap-2">
-          <button
-            type="button"
-            onClick={() => setMode("login")}
-            className={formMode === "login" ? "rounded-full bg-accent px-3 py-1.5 text-sm font-semibold text-accent-ink" : "rounded-full bg-elevated px-3 py-1.5 text-sm text-muted"}
-          >
-            Sign in
-          </button>
-          {canSignup ? (
+    <main className="page-shell flex max-w-lg justify-center py-10 pb-16 sm:py-16">
+      <div className="w-full">
+        <div className="mb-6 text-center">
+          <p className="section-kicker">Account</p>
+          <h1 className="mt-2 text-3xl font-semibold tracking-tight sm:text-4xl">
+            {mfaToken
+              ? "Authenticator code"
+              : formMode === "login"
+                ? "Welcome back"
+                : formMode === "forgot"
+                  ? "Reset password"
+                  : "Create Account"}
+          </h1>
+          <p className="mx-auto mt-2 max-w-md text-sm text-muted">
+            {mfaToken
+              ? "Enter the 6-digit code from your app."
+              : formMode === "signup"
+                ? signupMode === "invite"
+                  ? "You need an invite code from staff."
+                  : "Choose how you'd like to create your account"
+                : formMode === "forgot"
+                  ? access?.resetEnabled
+                    ? "We will email a reset link if that account exists."
+                    : "Ask a site admin to reset your password. SMTP is not set."
+                  : "Login to your account to continue"}
+          </p>
+        </div>
+        <div className="card-panel p-5 sm:p-6">
+          {!mfaToken && canSignup ? (
+            <div className="mb-5 grid grid-cols-2 gap-1 rounded-full bg-elevated/80 p-1">
+              <button
+                type="button"
+                onClick={() => setMode("login")}
+                className={formMode === "login" ? "btn btn-primary w-full" : "btn w-full text-muted"}
+              >
+                Sign in
+              </button>
+              <button
+                type="button"
+                onClick={() => setMode("signup")}
+                className={formMode === "signup" ? "btn btn-primary w-full" : "btn w-full text-muted"}
+              >
+                Sign up
+              </button>
+            </div>
+          ) : null}
+          <form onSubmit={(event) => void onSubmit(event)} className="space-y-3">
+            {mfaToken ? (
+              <input name="code" inputMode="numeric" pattern="\d{6}" required placeholder="6-digit code" className="field-input" />
+            ) : (
+              <>
+                {formMode === "signup" ? (
+                  <input name="displayName" required minLength={2} placeholder="Display name" className="field-input" />
+                ) : null}
+                <input name="email" type="email" required placeholder="Email" className="field-input" />
+                {formMode === "signup" && signupMode === "invite" ? (
+                  <input
+                    name="inviteCode"
+                    value={inviteCode}
+                    onChange={(event) => setInviteCode(event.target.value)}
+                    required
+                    placeholder="Invite code"
+                    className="field-input"
+                  />
+                ) : null}
+                {formMode !== "forgot" ? (
+                  <input
+                    name="password"
+                    type="password"
+                    required
+                    minLength={formMode === "signup" ? 10 : 8}
+                    placeholder={formMode === "signup" ? "Password (10+ with a letter and a number)" : "Password"}
+                    className="field-input"
+                  />
+                ) : null}
+              </>
+            )}
+            {error ? <p className="text-sm text-red-400">{error}</p> : null}
+            {note ? <p className="text-sm text-muted">{note}</p> : null}
             <button
-              type="button"
-              onClick={() => setMode("signup")}
-              className={formMode === "signup" ? "rounded-full bg-accent px-3 py-1.5 text-sm font-semibold text-accent-ink" : "rounded-full bg-elevated px-3 py-1.5 text-sm text-muted"}
+              type="submit"
+              disabled={pending || (formMode === "forgot" && access && !access.resetEnabled)}
+              className="btn btn-primary btn-lg w-full"
             >
-              Sign up
+              {pending
+                ? "Please wait…"
+                : mfaToken
+                  ? "Verify"
+                  : formMode === "login"
+                    ? "Sign in"
+                    : formMode === "forgot"
+                      ? "Send reset link"
+                      : "Create account"}
+            </button>
+          </form>
+          {!mfaToken && formMode === "login" ? (
+            <button type="button" onClick={() => setMode("forgot")} className="mt-4 w-full text-center text-sm text-muted hover:text-ink">
+              Forgot password
             </button>
           ) : null}
         </div>
-      ) : null}
-      <form onSubmit={(event) => void onSubmit(event)} className="card-panel mt-6 space-y-3 p-4">
-        {mfaToken ? (
-          <input name="code" inputMode="numeric" pattern="\d{6}" required placeholder="6-digit code" className="h-11 w-full rounded-xl bg-elevated px-3 text-sm ring-1 ring-white/10" />
-        ) : (
-          <>
-            {formMode === "signup" ? (
-              <input name="displayName" required minLength={2} placeholder="Display name" className="h-11 w-full rounded-xl bg-elevated px-3 text-sm ring-1 ring-white/10" />
-            ) : null}
-            <input name="email" type="email" required placeholder="Email" className="h-11 w-full rounded-xl bg-elevated px-3 text-sm ring-1 ring-white/10" />
-            {formMode === "signup" && signupMode === "invite" ? (
-              <input
-                name="inviteCode"
-                value={inviteCode}
-                onChange={(event) => setInviteCode(event.target.value)}
-                required
-                placeholder="Invite code"
-                className="h-11 w-full rounded-xl bg-elevated px-3 text-sm ring-1 ring-white/10"
-              />
-            ) : null}
-            {formMode !== "forgot" ? (
-              <input name="password" type="password" required minLength={formMode === "signup" ? 10 : 8} placeholder={formMode === "signup" ? "Password (10+ with a letter and a number)" : "Password"} className="h-11 w-full rounded-xl bg-elevated px-3 text-sm ring-1 ring-white/10" />
-            ) : null}
-          </>
-        )}
-        {error ? <p className="text-sm text-red-400">{error}</p> : null}
-        {note ? <p className="text-sm text-muted">{note}</p> : null}
-        <button type="submit" disabled={pending || (formMode === "forgot" && access && !access.resetEnabled)} className="w-full rounded-full bg-accent py-2.5 text-sm font-semibold text-accent-ink disabled:opacity-60">
-          {pending ? "Please wait…" : mfaToken ? "Verify" : formMode === "login" ? "Sign in" : formMode === "forgot" ? "Send reset link" : "Create account"}
-        </button>
-      </form>
-      {!mfaToken && formMode === "login" ? (
-        <button type="button" onClick={() => setMode("forgot")} className="mt-4 text-sm text-muted hover:text-ink">
-          Forgot password
-        </button>
-      ) : null}
+      </div>
     </main>
   );
 }

@@ -81,7 +81,7 @@ export function toDatetimeLocal(iso?: string | null) {
 export function weekdayLabel(iso: string) {
   const date = new Date(`${iso}T12:00:00`);
   if (Number.isNaN(date.getTime())) return iso;
-  return date.toLocaleDateString("en-US", { weekday: "short" }).toUpperCase();
+  return date.toLocaleDateString("en-US", { weekday: "short" });
 }
 
 export function dayNum(iso: string) {
@@ -145,6 +145,25 @@ export function collectCaptionOptions(
     }
   }
   return [...byLang.values()];
+}
+
+export function titleTypeLabel(type?: string | null) {
+  if (!type) return "TV";
+  if (type === "SERIES") return "TV";
+  return type.replaceAll("_", " ");
+}
+
+export function formatCount(value?: number | null) {
+  const n = Math.max(0, Math.floor(value ?? 0));
+  if (n >= 1_000_000) {
+    const compact = n / 1_000_000;
+    return `${compact >= 10 ? compact.toFixed(0) : compact.toFixed(1).replace(/\.0$/, "")}M`;
+  }
+  if (n >= 1_000) {
+    const compact = n / 1_000;
+    return `${compact >= 10 ? compact.toFixed(0) : compact.toFixed(1).replace(/\.0$/, "")}K`;
+  }
+  return String(n);
 }
 
 export function uniqueById<T extends { id: string }>(items: T[]) {

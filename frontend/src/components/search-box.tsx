@@ -7,9 +7,16 @@ import { useEffect, useRef, useState } from "react";
 
 import { api } from "@/lib/client-api";
 import { forgetSearch, readRecentSearches, rememberSearch } from "@/lib/recent-searches";
+import { TitleHitRow } from "@/components/poster-card";
 import type { TitleCard } from "@/lib/types";
 
-export function SearchBox({ autoFocus = false }: { autoFocus?: boolean }) {
+export function SearchBox({
+  autoFocus = false,
+  variant = "default"
+}: {
+  autoFocus?: boolean;
+  variant?: "default" | "sidebar" | "compact";
+}) {
   const router = useRouter();
   const params = useSearchParams();
   const defaultValue = params.get("q") ?? "";
@@ -58,7 +65,13 @@ export function SearchBox({ autoFocus = false }: { autoFocus?: boolean }) {
     <div ref={box} className="relative w-full">
       <form
         action="/search"
-        className="flex h-11 w-full items-center gap-2 rounded-2xl bg-elevated/80 px-3.5 ring-1 ring-white/10 backdrop-blur-sm focus-within:ring-accent/60"
+        className={
+          variant === "sidebar"
+            ? "search-field flex h-9 w-full items-center gap-2 px-3 focus-within:shadow-[inset_0_0_0_2px_color-mix(in_oklch,var(--color-ink)_20%,transparent)]"
+            : variant === "compact"
+              ? "search-field flex h-9 w-full items-center gap-2 px-3"
+              : "search-field flex h-10 w-full items-center gap-2 rounded-full px-3.5 backdrop-blur-sm focus-within:shadow-[inset_0_0_0_2px_color-mix(in_oklch,var(--color-accent)_45%,transparent)]"
+        }
         onSubmit={(event) => {
           event.preventDefault();
           go(inputRef.current?.value ?? "");
@@ -67,6 +80,7 @@ export function SearchBox({ autoFocus = false }: { autoFocus?: boolean }) {
         <Search className="size-4 shrink-0 text-muted" />
         <input
           ref={inputRef}
+          id={variant === "sidebar" ? "anemi-sidebar-search" : undefined}
           name="q"
           value={q}
           onChange={(event) => {
@@ -75,17 +89,23 @@ export function SearchBox({ autoFocus = false }: { autoFocus?: boolean }) {
           }}
           onFocus={() => setOpen(true)}
           autoFocus={autoFocus}
-          placeholder="Search titles"
+          placeholder={variant === "sidebar" || variant === "compact" ? "Search Shows..." : "Search titles"}
           className="h-full w-full bg-transparent text-sm placeholder:text-muted/70"
           aria-label="Search titles"
         />
-        <button
-          type="button"
-          onClick={() => window.dispatchEvent(new Event("anemi-open-search"))}
-          className="hidden shrink-0 rounded-md bg-black/25 px-1.5 py-0.5 text-[10px] font-semibold tracking-wide text-muted ring-1 ring-white/10 lg:inline"
-        >
-          Ctrl K
-        </button>
+        {variant === "sidebar" ? (
+          <kbd className="search-kbd hidden shrink-0 px-1.5 py-0.5 text-[10px] font-semibold sm:inline">
+            /
+          </kbd>
+        ) : variant === "default" ? (
+          <button
+            type="button"
+            onClick={() => window.dispatchEvent(new Event("anemi-open-search"))}
+            className="search-kbd hidden shrink-0 px-1.5 py-0.5 text-[10px] font-semibold tracking-wide lg:inline"
+          >
+            Ctrl K
+          </button>
+        ) : null}
       </form>
       {open && (hits.length || (!q.trim() && recent.length)) ? (
         <ul className="card-panel absolute top-12 z-40 w-full overflow-hidden py-1">
@@ -124,8 +144,7 @@ export function SearchBox({ autoFocus = false }: { autoFocus?: boolean }) {
                       setOpen(false);
                     }}
                   >
-                    {item.name}
-                    <span className="ml-2 text-xs text-muted">{item.year}</span>
+                    <TitleHitRow title={item} />
                   </Link>
                 </li>
               ))}

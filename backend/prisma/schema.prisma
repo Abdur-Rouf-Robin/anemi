@@ -75,8 +75,9 @@ model User {
   autoPlay      Boolean  @default(true)
   autoNext      Boolean  @default(true)
   autoSkipIntro Boolean  @default(true)
-  theme         String   @default("dark")
+  theme         String   @default("light")
   locale        String   @default("en")
+  settings      Json     @default("{}")
   createdAt     DateTime @default(now())
   progress      WatchProgress[]
   watchLater    WatchLater[]

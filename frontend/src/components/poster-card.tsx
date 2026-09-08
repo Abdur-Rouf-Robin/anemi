@@ -1,23 +1,33 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
+import { Check, Play, Plus } from "lucide-react";
 
 import { displayTitle } from "@/lib/display-title";
+import { api } from "@/lib/client-api";
 import type { TitleCard } from "@/lib/types";
 import { useLocale } from "@/lib/use-locale";
 import { cn, firstEpisodeId, formatAirDate } from "@/lib/utils";
+import { StatusDot, TitleMeta } from "@/components/title-meta";
+import { usePrefs } from "@/components/settings/settings-provider";
+import type { ThumbnailSection } from "@/lib/user-settings";
 
 export function PosterArt({
   name,
   hue,
   src,
-  className
+  className,
+  overlay = true,
+  blur
 }: {
   name: string;
   hue: number;
   src?: string | null;
   className?: string;
+  overlay?: boolean;
+  blur?: boolean;
 }) {
   const [broken, setBroken] = useState(false);
   useEffect(() => {
@@ -25,6 +35,8 @@ export function PosterArt({
   }, [src]);
   const initial = name.slice(0, 1).toUpperCase();
   const showImage = Boolean(src) && !broken;
+  const prefs = usePrefs();
+  const blurred = blur ?? prefs.blurThumbnails;
   return (
     <div
       className={cn("relative overflow-hidden bg-elevated", className)}
@@ -40,7 +52,7 @@ export function PosterArt({
         <img
           src={src ?? undefined}
           alt=""
-          className="absolute inset-0 h-full w-full object-cover"
+          className={cn("absolute inset-0 h-full w-full object-cover", blurred && "scale-105 blur-md")}
           onError={() => setBroken(true)}
         />
       ) : (
@@ -51,8 +63,42 @@ export function PosterArt({
           </span>
         </>
       )}
-      <div className="absolute inset-0 bg-linear-to-t from-black/35 via-transparent to-black/10" />
+      {overlay ? <div className="absolute inset-0 bg-linear-to-t from-black/35 via-transparent to-black/10" /> : null}
     </div>
+  );
+}
+
+function CardAddButton({ titleId }: { titleId: string }) {
+  const router = useRouter();
+  const [saved, setSaved] = useState(false);
+  return (
+    <button
+      type="button"
+      aria-label={saved ? "Saved" : "Add to list"}
+      className="absolute top-2 right-2 z-[3] flex size-8 items-center justify-center rounded-md bg-black/70 text-white opacity-0 shadow-sm backdrop-blur-[2px] transition-opacity duration-150 group-hover:opacity-100 hover:bg-black/85"
+      onClick={(event) => {
+        event.preventDefault();
+        event.stopPropagation();
+        void api<{ saved: boolean }>(`/library/later/${titleId}`, { method: "PUT" })
+          .then((data) => setSaved(data.saved))
+          .catch(() => router.push("/account"));
+      }}
+    >
+      {saved ? <Check className="size-4" strokeWidth={2.25} /> : <Plus className="size-4" strokeWidth={2.25} />}
+    </button>
+  );
+}
+
+export function PosterHover({ titleId }: { titleId?: string }) {
+  return (
+    <>
+      <span className="pointer-events-none absolute inset-0 z-[1] flex items-center justify-center bg-black/45 opacity-0 transition-opacity duration-150 group-hover:opacity-100">
+        <span className="flex size-[52px] items-center justify-center rounded-full bg-white/10 ring-2 ring-white">
+          <Play className="size-6 translate-x-px fill-white text-white" strokeWidth={1.5} />
+        </span>
+      </span>
+      {titleId ? <CardAddButton titleId={titleId} /> : null}
+    </>
   );
 }
 
@@ -60,15 +106,18 @@ export function PosterCard({
   title,
   progress,
   showAirDate,
-  layout = "rail"
+  layout = "rail",
+  section = "series"
 }: {
   title: TitleCard;
   progress?: number;
   showAirDate?: boolean;
   layout?: "rail" | "grid";
+  section?: ThumbnailSection;
 }) {
   const locale = useLocale();
-  const label = displayTitle(title, locale);
+  const prefs = usePrefs();
+  const label = displayTitle(title, locale, prefs.titleLanguage);
   const episodeId = title.continueEpisodeId ?? firstEpisodeId(title);
   const href = episodeId ? `/watch/${episodeId}` : `/title/${title.slug}`;
   const bar = progress ?? title.progress;
@@ -76,92 +125,80 @@ export function PosterCard({
     showAirDate || title.status === "UPCOMING"
       ? formatAirDate(title.nextAirDate) ?? "Soon"
       : null;
-  const badge = airLabel
-    ? null
-    : title.type === "MOVIE"
-      ? "Movie"
-      : title.status === "AIRING"
-        ? "New"
-        : null;
-  const art = title.posterUrl || title.backdropUrl;
+  const finished = title.status === "COMPLETED" || (title.progress ?? 0) >= (prefs.watchedThreshold ?? 85);
+  const kind = prefs.thumbnailType[section] ?? "poster";
+  const art = kind === "frame" ? title.backdropUrl || title.posterUrl : title.posterUrl || title.backdropUrl;
+  const blur = prefs.blurThumbnails && !(prefs.unblurWatched && finished);
+  const landscape = layout !== "grid" && kind === "frame";
 
   return (
-    <Link
-      href={href}
-      className={cn("group block", layout === "grid" ? "w-full" : "w-[132px] shrink-0 sm:w-[168px]")}
+    <div
+      className={cn(
+        "group",
+        layout === "grid" ? "w-full" : landscape ? "w-[210px] shrink-0 sm:w-[268px]" : "w-[132px] shrink-0 sm:w-[168px]",
+        finished && prefs.dimCompleted && "opacity-55",
+        finished && prefs.grayscaleCompleted && "grayscale"
+      )}
     >
-      <div className="poster-frame relative aspect-2/3 bg-elevated transition-transform duration-200 ease-out motion-safe:group-hover:-translate-y-1.5 motion-safe:group-hover:scale-[1.04]">
-        <PosterArt name={label} hue={title.hue} src={art} className="absolute inset-0" />
-        <span className="absolute inset-0 flex flex-col justify-end bg-linear-to-t from-black/92 via-black/45 to-transparent p-3 opacity-0 transition-opacity duration-200 group-hover:opacity-100">
-          <span className="mb-1 flex flex-wrap gap-1">
-            {title.score != null ? (
-              <span className="rounded-md bg-accent px-1.5 py-0.5 text-[10px] font-bold text-accent-ink">
-                ★ {title.score.toFixed(1)}
-              </span>
-            ) : null}
-            <span className="rounded-md bg-white/15 px-1.5 py-0.5 text-[10px] font-semibold text-white">
-              {title.type === "SERIES" ? "TV" : title.type}
-            </span>
-            {title.episodeCount ? (
-              <span className="rounded-md bg-emerald-600/90 px-1.5 py-0.5 text-[10px] font-bold text-white">
-                {title.episodeCount} ep
-              </span>
-            ) : null}
-          </span>
-          {title.synopsis ? (
-            <span className="mb-2 line-clamp-4 text-[11px] leading-snug text-white/80">{title.synopsis}</span>
-          ) : null}
-          <span className="inline-flex w-fit items-center rounded-full bg-accent px-3.5 py-1.5 text-xs font-semibold text-accent-ink shadow-lg">
-            {episodeId ? "Watch now" : "Details"}
-          </span>
-        </span>
-        {badge ? (
-          <span className="absolute top-2 left-2 rounded-full bg-black/55 px-2 py-0.5 text-[11px] font-medium text-white backdrop-blur-sm">
-            {badge}
-          </span>
-        ) : null}
-        {!airLabel ? (
-          <span className="absolute right-2 bottom-2 flex gap-1">
-            {title.subCount ? (
-              <span className="rounded-md bg-emerald-600/95 px-1.5 py-0.5 text-[10px] font-bold text-white">
-                CC {title.subCount}
-              </span>
-            ) : null}
-            {title.dubCount ? (
-              <span className="rounded-md bg-amber-400/95 px-1.5 py-0.5 text-[10px] font-bold text-black">
-                Dub {title.dubCount}
-              </span>
-            ) : null}
-            {!title.subCount && !title.dubCount && title.episodeCount ? (
-              <span className="rounded-md bg-black/55 px-1.5 py-0.5 text-[10px] text-white">{title.episodeCount}</span>
-            ) : null}
-          </span>
-        ) : null}
+      <div
+        className={cn(
+          "relative overflow-hidden rounded-[10px] bg-elevated",
+          landscape ? "aspect-video" : "aspect-2/3"
+        )}
+      >
+        <Link href={href} className="absolute inset-0" aria-label={label}>
+          <PosterArt name={label} hue={title.hue} src={art} className="absolute inset-0" overlay={false} blur={blur} />
+        </Link>
+        <PosterHover titleId={title.id} />
         {airLabel ? (
-          <span className="absolute inset-x-0 bottom-0 bg-linear-to-t from-black/90 to-black/25 px-2 pt-6 pb-2 text-center text-[11px] font-semibold tracking-wide text-white">
+          <span className="pointer-events-none absolute inset-x-0 bottom-0 z-[2] bg-linear-to-t from-black/90 to-black/25 px-2 pt-6 pb-2 text-center text-[11px] font-semibold tracking-wide text-white">
             {airLabel}
           </span>
         ) : null}
         {bar && !airLabel ? (
-          <span className="absolute inset-x-0 bottom-0 h-1 bg-black/40">
+          <span className="pointer-events-none absolute inset-x-0 bottom-0 z-[2] h-1 bg-black/40">
             <span className="block h-full bg-accent" style={{ width: `${bar}%` }} />
           </span>
         ) : null}
       </div>
-      <div className="mt-2">
-        <p className="line-clamp-2 text-sm font-medium leading-snug">{label}</p>
-        <p className="mt-0.5 text-xs text-muted">{airLabel ?? title.year ?? title.type.toLowerCase()}</p>
-      </div>
-    </Link>
+      <Link href={href} className="mt-1.5 block min-w-0">
+        <p className="flex items-center gap-1.5">
+          <StatusDot status={title.status} />
+          <span className="truncate text-[13px] font-semibold leading-snug group-hover:text-[#eab308]">{label}</span>
+        </p>
+        <TitleMeta title={title} className="mt-1" />
+      </Link>
+    </div>
   );
 }
 
 export function PosterGrid({ items }: { items: TitleCard[] }) {
   return (
-    <div className="grid grid-cols-2 gap-x-3 gap-y-6 sm:grid-cols-3 md:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6">
+    <div className="grid grid-cols-2 gap-x-3.5 gap-y-5 sm:grid-cols-3 md:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6">
       {items.map((title) => (
         <PosterCard key={title.id} title={title} layout="grid" />
       ))}
     </div>
+  );
+}
+
+export function TitleHitRow({ title }: { title: TitleCard }) {
+  return (
+    <span className="flex min-w-0 items-center gap-3">
+      <PosterArt
+        name={title.name}
+        hue={title.hue}
+        src={title.posterUrl}
+        className="h-12 w-9 shrink-0 rounded-md"
+        overlay={false}
+      />
+      <span className="min-w-0">
+        <span className="flex items-center gap-1.5">
+          <StatusDot status={title.status} />
+          <span className="truncate font-semibold">{title.name}</span>
+        </span>
+        <TitleMeta title={title} className="mt-0.5" />
+      </span>
+    </span>
   );
 }

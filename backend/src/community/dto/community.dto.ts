@@ -1,4 +1,4 @@
-import { IsBoolean, IsEmail, IsIn, IsOptional, IsString, MaxLength, MinLength } from "class-validator";
+import { IsBoolean, IsEmail, IsIn, IsObject, IsOptional, IsString, MaxLength, MinLength } from "class-validator";
 
 export class CreateRequestDto {
   @IsString()
@@ -72,4 +72,8 @@ export class PreferencesDto {
   @IsOptional()
   @IsIn(["en", "jp"])
   locale?: "en" | "jp";
+
+  @IsOptional()
+  @IsObject()
+  settings?: Record<string, unknown>;
 }

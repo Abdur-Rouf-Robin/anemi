@@ -9,6 +9,7 @@ import { EpisodeRow } from "@/components/episode-row";
 import { MediaPlayer } from "@/components/player/media-player";
 import { WatchStage } from "@/components/player/watch-stage";
 import { PosterArt } from "@/components/poster-card";
+import { TitleMeta } from "@/components/title-meta";
 import { SeasonArchive } from "@/components/season-archive";
 import { ShareButton } from "@/components/share-button";
 import { TitleActions } from "@/components/title-actions";
@@ -158,6 +159,7 @@ export function WatchDesk({
           <Link href={`/title/${title.slug}`} className="text-xl font-semibold tracking-tight hover:text-accent sm:text-2xl">
             {heading}
           </Link>
+          <TitleMeta className="mt-1" title={title} />
           <p className="mt-1 text-sm text-muted">
             {title.type === "MOVIE" ? episode.name : `Episode ${episode.number} · ${episode.name}`}
           </p>
@@ -166,12 +168,11 @@ export function WatchDesk({
               title.ageRating,
               "HD",
               title.type === "SERIES" ? "TV" : title.type,
+              title.year ? String(title.year) : null,
               formatDuration(episode.durationSec),
               `${new Set(episodes.map((item) => item.number)).size} ep`,
-              `${episodes.filter((item) => (item.audioKind ?? "SUB") !== "DUB").length} CC`,
-              episodes.some((item) => item.audioKind === "DUB")
-                ? `${episodes.filter((item) => item.audioKind === "DUB").length} Dub`
-                : null,
+              episodes.some((item) => (item.audioKind ?? "SUB") !== "DUB") ? "CC" : null,
+              episodes.some((item) => item.audioKind === "DUB") ? "DUB" : null,
               title.studio
             ]
               .filter(Boolean)

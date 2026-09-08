@@ -123,7 +123,7 @@ export function FilterChips({
               key={item.label}
               href={href({ type: item.type, status: item.status, audio: item.audio })}
               className={cn(
-                "rounded-full px-3.5 py-1.5 text-sm font-medium ring-1 ring-white/10",
+                "rounded-full px-3.5 py-1.5 text-sm font-medium ring-1 ring-line",
                 active ? "chip-on" : "bg-elevated text-muted hover:text-ink"
               )}
             >
@@ -161,7 +161,7 @@ export function FilterChips({
                 key={item.slug}
                 href={href({ genre: genre === item.slug ? "" : item.slug })}
                 className={cn(
-                  "rounded-full px-3 py-1 text-sm ring-1 ring-white/10",
+                  "rounded-full px-3 py-1 text-sm ring-1 ring-line",
                   genre === item.slug ? "chip-on" : "bg-elevated text-muted hover:text-ink"
                 )}
               >

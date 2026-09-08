@@ -22,9 +22,7 @@ npm run db:generate
 npm run db:migrate
 npm run build
 
-echo "Built. Start API then UI (this host uses PM2: anemi-backend, anemi-frontend):"
-echo "  NODE_ENV=production npm run start:backend"
-echo "  NODE_ENV=production npm run start:frontend"
+echo "Built. Reload with ./scripts/pm2-restart-anemi.sh (this host uses PM2: anemi-backend, anemi-frontend)."
 echo "Put nginx in front (scripts/nginx-anime.conf). Then:"
 echo "  1. Confirm MFA on the admin at /account"
 echo "  2. rsync licensed files into data/inbox and Import folder in the CMS"

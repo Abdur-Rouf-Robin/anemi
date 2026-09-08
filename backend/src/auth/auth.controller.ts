@@ -27,6 +27,7 @@ import { SignupDto } from "./dto/signup.dto";
 import { AuthRateLimitGuard } from "./guards/auth-rate-limit.guard";
 import { MfaService } from "./mfa.service";
 import { clearAuthCookies, setAuthCookies } from "./cookie";
+import { parseUserAgent } from "../lib/user-settings";
 
 @Controller("auth")
 export class AuthController {
@@ -178,5 +179,25 @@ export class AuthController {
   logout(@Req() req: Request, @Res({ passthrough: true }) res: Response) {
     clearAuthCookies(req, res);
     return { ok: true };
+  }
+
+  @Get("sessions")
+  sessions(@Req() req: Request) {
+    const ua = parseUserAgent(req.headers["user-agent"]);
+    return {
+      current: { ...ua, current: true },
+      others: [] as { os: string; browser: string; current: boolean }[]
+    };
+  }
+
+  @Post("sessions/revoke")
+  async revokeOthers(
+    @CurrentUser() user: AuthUser,
+    @Req() req: Request,
+    @Res({ passthrough: true }) res: Response
+  ) {
+    const result = await this.auth.revokeOtherSessions(user.id);
+    const csrfToken = setAuthCookies(req, res, result.accessToken);
+    return { ok: true, user: result.user, csrfToken };
   }
 }
