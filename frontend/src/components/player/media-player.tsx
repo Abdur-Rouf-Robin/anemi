@@ -1750,6 +1750,7 @@ export function MediaPlayer({
           onLights={() => setLightsOff((v) => !v)}
           onPref={patchPref}
           onCaptions={() => hasCues && setCaptions((v) => !v)}
+          episodeId={episodeId}
         />
       ) : null}
     </div>

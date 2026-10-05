@@ -69,34 +69,34 @@ enum RequestStatus {
 }
 
 model User {
-  id            String   @id @default(cuid())
-  email         String   @unique
-  passwordHash  String
-  displayName   String
-  role          Role     @default(VIEWER)
-  totpSecret    String?
-  mfaEnabled    Boolean  @default(false)
-  tokenVersion  Int      @default(0)
-  autoPlay      Boolean  @default(true)
-  autoNext      Boolean  @default(true)
-  autoSkipIntro Boolean  @default(true)
-  theme         String   @default("light")
-  locale        String   @default("en")
-  settings      Json     @default("{}")
-  createdAt     DateTime @default(now())
-  progress      WatchProgress[]
-  watchLater    WatchLater[]
-  follows       Follow[]
-  history       WatchHistory[]
-  comments      Comment[]
-  listEntries   ListEntry[]
-  ratings       Rating[]
-  reports       CommentReport[]
+  id              String           @id @default(cuid())
+  email           String           @unique
+  passwordHash    String
+  displayName     String
+  role            Role             @default(VIEWER)
+  totpSecret      String?
+  mfaEnabled      Boolean          @default(false)
+  tokenVersion    Int              @default(0)
+  autoPlay        Boolean          @default(true)
+  autoNext        Boolean          @default(true)
+  autoSkipIntro   Boolean          @default(true)
+  theme           String           @default("light")
+  locale          String           @default("en")
+  settings        Json             @default("{}")
+  createdAt       DateTime         @default(now())
+  progress        WatchProgress[]
+  watchLater      WatchLater[]
+  follows         Follow[]
+  history         WatchHistory[]
+  comments        Comment[]
+  listEntries     ListEntry[]
+  ratings         Rating[]
+  reports         CommentReport[]
   playbackReports PlaybackReport[]
   skipSuggestions SkipSuggestion[]
-  notifications Notification[]
-  requests      TitleRequest[]
-  posts         CommunityPost[]
+  notifications   Notification[]
+  requests        TitleRequest[]
+  posts           CommunityPost[]
   hostedRooms     WatchRoom[]
   roomMessages    RoomMessage[]
   passwordResets  PasswordReset[]
@@ -111,36 +111,36 @@ model Genre {
 }
 
 model Title {
-  id          String        @id @default(cuid())
-  slug        String        @unique
-  type        TitleType
-  status      TitleStatus
-  publish     PublishStatus @default(DRAFT)
-  name        String
-  nameJa      String?
-  synopsis    String?
-  year        Int?
-  hue         Int           @default(40)
-  spotlight   Boolean       @default(false)
-  viewCount   Int           @default(0)
-  studio      String?
-  ageRating   String?
-  airSeason   AirSeason?
-  scoreSum    Int           @default(0)
-  scoreCount  Int           @default(0)
-  posterUrl   String?
-  backdropUrl String?
-  trailerUrl  String?
-  producers   String[]      @default([])
-  createdAt   DateTime      @default(now())
-  updatedAt   DateTime      @updatedAt
-  genres      TitleGenre[]
-  characters  TitleCharacter[]
-  artworks    TitleArtwork[]
-  seasons     Season[]
-  watchLater  WatchLater[]
-  follows     Follow[]
-  listEntries ListEntry[]
+  id            String           @id @default(cuid())
+  slug          String           @unique
+  type          TitleType
+  status        TitleStatus
+  publish       PublishStatus    @default(DRAFT)
+  name          String
+  nameJa        String?
+  synopsis      String?
+  year          Int?
+  hue           Int              @default(40)
+  spotlight     Boolean          @default(false)
+  viewCount     Int              @default(0)
+  studio        String?
+  ageRating     String?
+  airSeason     AirSeason?
+  scoreSum      Int              @default(0)
+  scoreCount    Int              @default(0)
+  posterUrl     String?
+  backdropUrl   String?
+  trailerUrl    String?
+  producers     String[]         @default([])
+  createdAt     DateTime         @default(now())
+  updatedAt     DateTime         @updatedAt
+  genres        TitleGenre[]
+  characters    TitleCharacter[]
+  artworks      TitleArtwork[]
+  seasons       Season[]
+  watchLater    WatchLater[]
+  follows       Follow[]
+  listEntries   ListEntry[]
   ratings       Rating[]
   viewEvents    ViewEvent[]
   playlistItems PlaylistItem[]
@@ -153,8 +153,8 @@ model Title {
 model TitleGenre {
   titleId String
   genreId String
-  title   Title @relation(fields: [titleId], references: [id], onDelete: Cascade)
-  genre   Genre @relation(fields: [genreId], references: [id], onDelete: Cascade)
+  title   Title  @relation(fields: [titleId], references: [id], onDelete: Cascade)
+  genre   Genre  @relation(fields: [genreId], references: [id], onDelete: Cascade)
 
   @@id([titleId, genreId])
 }
@@ -171,35 +171,35 @@ model Season {
 }
 
 model Episode {
-  id            String         @id @default(cuid())
-  seasonId      String
-  number        Int
-  slug          String
-  name          String
-  synopsis      String?
-  durationSec   Int?
-  airDate       DateTime?
-  publish       PublishStatus  @default(DRAFT)
-  audioKind     AudioKind      @default(SUB)
-  introStartSec Int?
-  introEndSec   Int?
-  outroStartSec Int?
-  subtitleUrl   String?
-  language      String         @default("")
-  videoUrl      String?
-  encodeStatus  String         @default("idle")
-  encodeError   String?
-  viewCount     Int            @default(0)
-  kind          String         @default("CANON")
-  season        Season         @relation(fields: [seasonId], references: [id], onDelete: Cascade)
-  progress      WatchProgress[]
-  history       WatchHistory[]
-  comments      Comment[]
+  id              String           @id @default(cuid())
+  seasonId        String
+  number          Int
+  slug            String
+  name            String
+  synopsis        String?
+  durationSec     Int?
+  airDate         DateTime?
+  publish         PublishStatus    @default(DRAFT)
+  audioKind       AudioKind        @default(SUB)
+  introStartSec   Int?
+  introEndSec     Int?
+  outroStartSec   Int?
+  subtitleUrl     String?
+  language        String           @default("")
+  videoUrl        String?
+  encodeStatus    String           @default("idle")
+  encodeError     String?
+  viewCount       Int              @default(0)
+  kind            String           @default("CANON")
+  season          Season           @relation(fields: [seasonId], references: [id], onDelete: Cascade)
+  progress        WatchProgress[]
+  history         WatchHistory[]
+  comments        Comment[]
   playbackReports PlaybackReport[]
   skipSuggestions SkipSuggestion[]
-  rooms         WatchRoom[]
-  encodeJobs    EncodeJob[]
-  captions      CaptionTrack[]
+  rooms           WatchRoom[]
+  encodeJobs      EncodeJob[]
+  captions        CaptionTrack[]
 
   @@unique([seasonId, number, audioKind, language])
 }
@@ -232,14 +232,14 @@ model Comment {
 }
 
 model TitleCharacter {
-  id       String @id @default(cuid())
+  id       String  @id @default(cuid())
   titleId  String
   name     String
-  role     String @default("SUPPORTING")
+  role     String  @default("SUPPORTING")
   imageUrl String?
   actor    String?
-  sort     Int    @default(0)
-  title    Title  @relation(fields: [titleId], references: [id], onDelete: Cascade)
+  sort     Int     @default(0)
+  title    Title   @relation(fields: [titleId], references: [id], onDelete: Cascade)
 
   @@index([titleId, sort])
 }
@@ -489,16 +489,16 @@ model ContactMessage {
 }
 
 model SiteSetting {
-  id                   String    @id @default("default")
-  announcement         String?
-  announcementHref     String?
-  scheduleMailEnabled  Boolean   @default(false)
-  scheduleMailLastAt   DateTime?
-  contactEmail         String?
-  communityGuidelines  String?
-  signupMode           String    @default("invite")
-  homeConfig           Json?
-  updatedAt            DateTime  @updatedAt
+  id                  String    @id @default("default")
+  announcement        String?
+  announcementHref    String?
+  scheduleMailEnabled Boolean   @default(false)
+  scheduleMailLastAt  DateTime?
+  contactEmail        String?
+  communityGuidelines String?
+  signupMode          String    @default("invite")
+  homeConfig          Json?
+  updatedAt           DateTime  @updatedAt
 }
 
 model Invite {

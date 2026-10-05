@@ -9,6 +9,29 @@ import { cn, formatAirTime, weekdayLabel } from "@/lib/utils";
 import { PosterArt } from "./poster-card";
 import { StatusDot, TitleMeta } from "./title-meta";
 
+function AirCountdown({ at }: { at?: string | null }) {
+  const [label, setLabel] = useState("");
+  useEffect(() => {
+    if (!at) return;
+    function tick() {
+      const ms = new Date(at!).getTime() - Date.now();
+      if (!Number.isFinite(ms) || ms <= 0) {
+        setLabel("");
+        return;
+      }
+      const hours = Math.floor(ms / 3_600_000);
+      const minutes = Math.floor((ms % 3_600_000) / 60_000);
+      const seconds = Math.floor((ms % 60_000) / 1000);
+      setLabel(hours > 0 ? `${hours}h ${minutes}m` : `${minutes}m ${seconds}s`);
+    }
+    tick();
+    const id = window.setInterval(tick, 1000);
+    return () => window.clearInterval(id);
+  }, [at]);
+  if (!label) return null;
+  return <span className="shrink-0 text-xs font-semibold tabular-nums text-muted">{label}</span>;
+}
+
 function isoDay(date: Date) {
   return date.toISOString().slice(0, 10);
 }
@@ -59,6 +82,7 @@ export function WeekSchedule({
 
   const selected = week.find((day) => day.key === active) ?? week.find((day) => day.items.length) ?? week[0];
   const visible = compact ? (selected?.items ?? []).slice(0, 6) : (selected?.items ?? []);
+  const timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
 
   return (
     <section className="page-shell">
@@ -104,6 +128,11 @@ export function WeekSchedule({
             </button>
           </div>
         ) : null}
+        {page ? (
+          <p className="mb-3 text-sm text-muted">
+            Times use your device timezone ({timeZone}). Episode air dates follow the Japan broadcast, so availability can differ.
+          </p>
+        ) : null}
         <div className={page ? "no-scrollbar flex gap-1 overflow-x-auto" : "no-scrollbar flex gap-1 overflow-x-auto px-3 pt-3 sm:px-4"}>
           {week.map((day) => {
             const on = day.key === (selected?.key ?? active);
@@ -125,6 +154,7 @@ export function WeekSchedule({
                 <span className="mt-1 block text-lg font-semibold">
                   {new Date(`${day.key}T12:00:00`).getDate()}
                 </span>
+                <span className="mt-0.5 block text-[11px] tabular-nums">{day.items.length}</span>
               </button>
             );
           })}
@@ -153,6 +183,7 @@ export function WeekSchedule({
                   </span>
                   <TitleMeta title={item.title} className="mt-0.5" />
                 </span>
+                <AirCountdown at={item.airDate} />
                 <span className="shrink-0 rounded-full bg-accent px-2 py-1 text-xs font-semibold text-accent-ink sm:px-3">
                   <span className="sm:hidden">E{item.number}</span>
                   <span className="hidden sm:inline">Episode {item.number}</span>

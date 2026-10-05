@@ -6,6 +6,7 @@ const SORTS = [
   { value: "popular", label: "Default" },
   { value: "newest", label: "Newest First" },
   { value: "updated", label: "Updated (Desc)" },
+  { value: "created", label: "Created (Desc)" },
   { value: "score", label: "Weighted" },
   { value: "az", label: "Name (A-Z)" }
 ];

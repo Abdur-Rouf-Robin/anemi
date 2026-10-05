@@ -24,6 +24,8 @@ import type { AuthUser } from "../auth/auth.types";
 import { CurrentUser } from "../auth/decorators/current-user.decorator";
 import { Roles } from "../auth/decorators/roles.decorator";
 import { StaffMfaGuard } from "../auth/guards/staff-mfa.guard";
+import { CreateArtworkDto } from "./dto/create-artwork.dto";
+import { CreateCharacterDto } from "./dto/create-character.dto";
 import { CreateInviteDto } from "./dto/create-invite.dto";
 import { CreateUserDto } from "./dto/create-user.dto";
 import { SetRequestStatusDto } from "./dto/set-request-status.dto";
@@ -114,6 +116,26 @@ export class AdminController {
   @Patch("titles/:id")
   updateTitle(@Param("id") id: string, @Body() dto: UpsertTitleDto) {
     return this.admin.updateTitle(id, dto);
+  }
+
+  @Post("titles/:id/characters")
+  addCharacter(@Param("id") id: string, @Body() dto: CreateCharacterDto) {
+    return this.admin.addCharacter(id, dto);
+  }
+
+  @Delete("characters/:id")
+  deleteCharacter(@Param("id") id: string) {
+    return this.admin.deleteCharacter(id);
+  }
+
+  @Post("titles/:id/artwork")
+  addArtwork(@Param("id") id: string, @Body() dto: CreateArtworkDto) {
+    return this.admin.addArtwork(id, dto);
+  }
+
+  @Delete("artwork/:id")
+  deleteArtwork(@Param("id") id: string) {
+    return this.admin.deleteArtwork(id);
   }
 
   @Post("titles/:id/publish")
@@ -230,6 +252,26 @@ export class AdminController {
   @Get("reports")
   reports() {
     return this.admin.reports();
+  }
+
+  @Get("playback-reports")
+  playbackReports() {
+    return this.admin.playbackReports();
+  }
+
+  @Get("skip-suggestions")
+  skipSuggestions() {
+    return this.admin.skipSuggestions();
+  }
+
+  @Post("skip-suggestions/:id/apply")
+  applySkipSuggestion(@Param("id") id: string) {
+    return this.admin.applySkipSuggestion(id);
+  }
+
+  @Post("skip-suggestions/:id/decline")
+  declineSkipSuggestion(@Param("id") id: string) {
+    return this.admin.declineSkipSuggestion(id);
   }
 
   @Delete("comments/:id")

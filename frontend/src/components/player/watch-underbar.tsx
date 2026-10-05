@@ -2,6 +2,8 @@
 
 import Link from "next/link";
 
+import { PlaybackReport } from "@/components/playback-report";
+import { SkipSuggestion } from "@/components/skip-suggestion";
 import type { AudioOption } from "./audio-tracks-panel";
 import { audioTrackLabel, cn } from "@/lib/utils";
 
@@ -27,7 +29,8 @@ export function WatchUnderbar({
   onTheater,
   onLights,
   onPref,
-  onCaptions
+  onCaptions,
+  episodeId
 }: {
   episodeNumber?: number;
   episodeName: string;
@@ -51,6 +54,7 @@ export function WatchUnderbar({
   onLights: () => void;
   onPref: (key: "autoPlay" | "autoNext" | "autoSkipIntro") => void;
   onCaptions: () => void;
+  episodeId?: string;
 }) {
   const currentLabel = audioTrackLabel(audioKind, audioLanguage);
   const many =
@@ -88,6 +92,8 @@ export function WatchUnderbar({
             Next
           </button>
         ) : null}
+        {episodeId ? <PlaybackReport episodeId={episodeId} /> : null}
+        {episodeId ? <SkipSuggestion episodeId={episodeId} /> : null}
       </div>
       <div className="card-panel flex flex-wrap items-center gap-2 px-3 py-2.5">
         <p className="mr-auto min-w-0 text-sm">

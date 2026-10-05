@@ -1,21 +1,21 @@
 export const DEFAULT_HOME_SECTIONS = {
   hero: true,
   schedule: true,
-  featuredFilm: true,
+  featuredFilm: false,
   popular: true,
   latest: true,
-  airingSoon: true,
-  genres: true,
-  watchNext: true,
+  airingSoon: false,
+  genres: false,
+  watchNext: false,
   continueWatching: true,
-  following: true,
+  following: false,
   airingNow: true,
-  newlyAdded: true,
-  series: true,
-  comingSoon: true,
-  collections: true,
-  community: true,
-  az: true
+  newlyAdded: false,
+  series: false,
+  comingSoon: false,
+  collections: false,
+  community: false,
+  az: false
 } as const;
 
 export type HomeSectionKey = keyof typeof DEFAULT_HOME_SECTIONS;

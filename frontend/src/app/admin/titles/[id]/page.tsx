@@ -63,6 +63,10 @@ type AdminTitle = {
   airSeason?: string | null;
   posterUrl?: string | null;
   backdropUrl?: string | null;
+  trailerUrl?: string | null;
+  producers?: string[];
+  characters?: { id: string; name: string; role: string; imageUrl?: string | null; actor?: string | null }[];
+  artworks?: { id: string; url: string; caption?: string | null }[];
   publish: string;
   genres: { slug: string; name: string }[];
   seasons: Season[];
@@ -130,6 +134,11 @@ export default function AdminTitleEditorPage() {
           airSeason: form.get("airSeason") || undefined,
           posterUrl: form.get("posterUrl") || undefined,
           backdropUrl: form.get("backdropUrl") || undefined,
+          trailerUrl: String(form.get("trailerUrl") ?? "").trim(),
+          producers: String(form.get("producers") ?? "")
+            .split(",")
+            .map((name) => name.trim())
+            .filter(Boolean),
           genreSlugs: form.getAll("genre").map(String)
         })
       });
@@ -459,6 +468,12 @@ export default function AdminTitleEditorPage() {
               <Field label="Backdrop URL">
                 <input name="backdropUrl" defaultValue={title.backdropUrl ?? ""} className={adminControl} />
               </Field>
+              <Field label="Trailer URL">
+                <input name="trailerUrl" defaultValue={title.trailerUrl ?? ""} placeholder="YouTube or video file URL" className={adminControl} />
+              </Field>
+              <Field label="Producers">
+                <input name="producers" defaultValue={(title.producers ?? []).join(", ")} placeholder="Comma separated" className={adminControl} />
+              </Field>
               <Field label="Hue" className="hidden">
                 <input name="hue" type="number" defaultValue={title.hue} className={adminControl} />
               </Field>
@@ -492,6 +507,108 @@ export default function AdminTitleEditorPage() {
             </div>
           </AdminCard>
         </form>
+      </section>
+
+      <section className="mb-8 grid gap-4 lg:grid-cols-2">
+        <AdminCard>
+          <h2 className="text-lg font-semibold">Characters</h2>
+          <ul className="mt-3 space-y-2">
+            {(title.characters ?? []).map((person) => (
+              <li key={person.id} className="flex items-center justify-between gap-3 text-sm">
+                <span>
+                  {person.name}
+                  <span className="text-muted"> · {person.role === "MAIN" ? "Main" : "Supporting"}</span>
+                  {person.actor ? <span className="text-muted"> · {person.actor}</span> : null}
+                </span>
+                <AdminButton
+                  type="button"
+                  variant="danger"
+                  className="h-8 px-2 text-xs"
+                  onClick={() => {
+                    void api(`/admin/characters/${person.id}`, { method: "DELETE" }).then(() => load());
+                  }}
+                >
+                  Remove
+                </AdminButton>
+              </li>
+            ))}
+            {!title.characters?.length ? <li className="text-sm text-muted">No characters yet.</li> : null}
+          </ul>
+          <form
+            className="mt-4 grid gap-2"
+            onSubmit={(event) => {
+              event.preventDefault();
+              const form = new FormData(event.currentTarget);
+              void api(`/admin/titles/${title.id}/characters`, {
+                method: "POST",
+                body: JSON.stringify({
+                  name: form.get("name"),
+                  role: form.get("role"),
+                  imageUrl: form.get("imageUrl") || undefined,
+                  actor: form.get("actor") || undefined
+                })
+              })
+                .then(() => {
+                  event.currentTarget.reset();
+                  return load();
+                })
+                .catch((err: Error) => setError(err.message));
+            }}
+          >
+            <input name="name" required placeholder="Name" className={adminControl} />
+            <select name="role" defaultValue="SUPPORTING" className={adminControl}>
+              <option value="MAIN">Main</option>
+              <option value="SUPPORTING">Supporting</option>
+            </select>
+            <input name="actor" placeholder="Voice actor" className={adminControl} />
+            <input name="imageUrl" placeholder="Image URL" className={adminControl} />
+            <AdminButton type="submit" className="h-9 w-fit px-3 text-xs">Add character</AdminButton>
+          </form>
+        </AdminCard>
+        <AdminCard>
+          <h2 className="text-lg font-semibold">Artwork</h2>
+          <ul className="mt-3 space-y-2">
+            {(title.artworks ?? []).map((piece) => (
+              <li key={piece.id} className="flex items-center justify-between gap-3 text-sm">
+                <span className="min-w-0 truncate">{piece.caption || piece.url}</span>
+                <AdminButton
+                  type="button"
+                  variant="danger"
+                  className="h-8 px-2 text-xs"
+                  onClick={() => {
+                    void api(`/admin/artwork/${piece.id}`, { method: "DELETE" }).then(() => load());
+                  }}
+                >
+                  Remove
+                </AdminButton>
+              </li>
+            ))}
+            {!title.artworks?.length ? <li className="text-sm text-muted">No artwork yet.</li> : null}
+          </ul>
+          <form
+            className="mt-4 grid gap-2"
+            onSubmit={(event) => {
+              event.preventDefault();
+              const form = new FormData(event.currentTarget);
+              void api(`/admin/titles/${title.id}/artwork`, {
+                method: "POST",
+                body: JSON.stringify({
+                  url: form.get("url"),
+                  caption: form.get("caption") || undefined
+                })
+              })
+                .then(() => {
+                  event.currentTarget.reset();
+                  return load();
+                })
+                .catch((err: Error) => setError(err.message));
+            }}
+          >
+            <input name="url" required placeholder="Image URL" className={adminControl} />
+            <input name="caption" placeholder="Caption" className={adminControl} />
+            <AdminButton type="submit" className="h-9 w-fit px-3 text-xs">Add artwork</AdminButton>
+          </form>
+        </AdminCard>
       </section>
 
       <section>

@@ -41,6 +41,11 @@ export function WatchNextRail({
             >
               <div className="relative aspect-2/3 overflow-hidden rounded-[10px]">
                 <PosterArt name={title.name} hue={title.hue} src={title.posterUrl} className="absolute inset-0" overlay={false} />
+                {title.reason ? (
+                  <span className="absolute top-2 left-2 z-[2] rounded bg-black/75 px-1.5 py-0.5 text-[10px] font-semibold tracking-wide text-white uppercase">
+                    {title.reason === "studio" ? "Same studio" : "Similar genre"}
+                  </span>
+                ) : null}
                 <PosterHover titleId={title.id} />
               </div>
               <p className="mt-1.5 flex items-center gap-1.5">

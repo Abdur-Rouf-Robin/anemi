@@ -160,6 +160,15 @@ export async function getTitles(search: {
   studio?: string;
   take?: string;
   skip?: string;
+  include?: string;
+  exclude?: string;
+  match?: string;
+  yearFrom?: string;
+  yearTo?: string;
+  minRatings?: string;
+  scoreMin?: string;
+  scoreMax?: string;
+  hasEpisodes?: string;
 }): Promise<{ items: TitleCard[]; total: number }> {
   const params = new URLSearchParams();
   for (const [key, value] of Object.entries(search)) {

@@ -1,13 +1,11 @@
 import type { Metadata } from "next";
 
-import { BrowseSort } from "@/components/browse-sort";
 import { CatalogPager } from "@/components/catalog-pager";
 import { EmptyState } from "@/components/empty-state";
-import { FilterChips } from "@/components/filter-chips";
-import { FilterToggle } from "@/components/filter-toggle";
+import { FilterDrawer } from "@/components/filter-drawer";
 import { PageHeader } from "@/components/page-header";
 import { PosterGrid } from "@/components/poster-card";
-import { getGenres, getTitles } from "@/lib/api";
+import { getGenres, getStudios, getTitles } from "@/lib/api";
 import { t } from "@/lib/i18n";
 import { requestLocale } from "@/lib/request-locale";
 
@@ -28,12 +26,21 @@ export default async function BrowsePage({
     audio?: string;
     studio?: string;
     page?: string;
+    include?: string;
+    exclude?: string;
+    match?: string;
+    yearFrom?: string;
+    yearTo?: string;
+    minRatings?: string;
+    scoreMin?: string;
+    scoreMax?: string;
+    hasEpisodes?: string;
   }>;
 }) {
   const params = await searchParams;
   const page = Math.max(1, Number(params.page) || 1);
   const skip = String((page - 1) * TAKE);
-  const [catalog, genres] = await Promise.all([
+  const [catalog, genres, studios] = await Promise.all([
     getTitles({
       type: params.type,
       sort: params.sort,
@@ -43,13 +50,39 @@ export default async function BrowsePage({
       season: params.season,
       audio: params.audio,
       studio: params.studio,
+      include: params.include,
+      exclude: params.exclude,
+      match: params.match,
+      yearFrom: params.yearFrom,
+      yearTo: params.yearTo,
+      minRatings: params.minRatings,
+      scoreMin: params.scoreMin,
+      scoreMax: params.scoreMax,
+      hasEpisodes: params.hasEpisodes,
       take: String(TAKE),
       skip
     }),
-    getGenres()
+    getGenres(),
+    getStudios()
   ]);
   const locale = await requestLocale();
-  const filtered = Boolean(params.type || params.genre || params.status || params.year || params.season || params.audio || params.studio);
+  const filtered = Boolean(
+    params.type ||
+      params.genre ||
+      params.include ||
+      params.exclude ||
+      params.status ||
+      params.year ||
+      params.yearFrom ||
+      params.yearTo ||
+      params.season ||
+      params.audio ||
+      params.studio ||
+      params.minRatings ||
+      params.scoreMin ||
+      params.scoreMax ||
+      params.hasEpisodes
+  );
 
   function hrefFor(nextPage: number, sort = params.sort) {
     const query = new URLSearchParams();
@@ -66,15 +99,12 @@ export default async function BrowsePage({
     <main className="page-shell py-8 pb-16 xl:py-10">
       <PageHeader title={t(locale, "Series")} blurb={t(locale, "Browse our collection of series")} uppercase />
       <div className="page-rule" />
-      <FilterToggle defaultOpen={filtered}>
-        <FilterChips path="/browse" {...params} genres={genres} />
-      </FilterToggle>
-      <BrowseSort value={params.sort ?? "popular"} params={params} />
+      <FilterDrawer path="/browse" params={params} genres={genres} studios={studios} />
       <PosterGrid items={catalog.items} />
       {catalog.items.length === 0 ? (
         <EmptyState
           title="No anime found"
-          blurb="Try a different sorting option or clear filters."
+          blurb={filtered ? "Clear a filter or try a wider score and year range." : "Try a different sorting option or clear filters."}
           href="/browse"
           hrefLabel="Clear filters"
         />

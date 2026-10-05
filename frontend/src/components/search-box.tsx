@@ -26,10 +26,26 @@ export function SearchBox({
   const [open, setOpen] = useState(false);
   const [hits, setHits] = useState<TitleCard[]>([]);
   const [recent, setRecent] = useState<string[]>([]);
+  const [popular, setPopular] = useState<TitleCard[]>([]);
 
   useEffect(() => {
     setRecent(readRecentSearches());
   }, []);
+
+  useEffect(() => {
+    if (!open || q.trim() || popular.length) return;
+    let cancel = false;
+    void api<{ items: TitleCard[] }>("/catalog/titles?sort=popular&take=6")
+      .then((data) => {
+        if (!cancel) setPopular(data.items ?? []);
+      })
+      .catch(() => {
+        if (!cancel) setPopular([]);
+      });
+    return () => {
+      cancel = true;
+    };
+  }, [open, q, popular.length]);
 
   useEffect(() => {
     const query = q.trim();
@@ -107,10 +123,11 @@ export function SearchBox({
           </button>
         ) : null}
       </form>
-      {open && (hits.length || (!q.trim() && recent.length)) ? (
+      {open && (hits.length || (!q.trim() && (recent.length || popular.length))) ? (
         <ul className="card-panel absolute top-12 z-40 w-full overflow-hidden py-1">
           {!q.trim()
-            ? recent.map((item) => (
+            ? <>
+              {recent.map((item) => (
                 <li key={item} className="flex items-center">
                   <button
                     type="button"
@@ -133,7 +150,16 @@ export function SearchBox({
                     ×
                   </button>
                 </li>
-              ))
+              ))}
+              {popular.length ? <li className="px-3 pt-2 text-[11px] font-semibold tracking-[0.14em] text-muted uppercase">Top search</li> : null}
+              {popular.map((item) => (
+                <li key={item.id}>
+                  <Link href={`/title/${item.slug}`} className="block px-3 py-2 text-sm hover:bg-elevated" onClick={() => setOpen(false)}>
+                    <TitleHitRow title={item} />
+                  </Link>
+                </li>
+              ))}
+              </>
             : hits.map((item) => (
                 <li key={item.id}>
                   <Link

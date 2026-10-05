@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException } from "@nestjs/common";
+import { BadRequestException, Injectable, NotFoundException } from "@nestjs/common";
 import { Prisma, PublishStatus } from "@prisma/client";
 
 import { publicSiteUrl } from "../lib/public-site-url";
@@ -236,11 +236,19 @@ export class CatalogService {
           })
         : Promise.resolve([])
     ]);
-    return { items: uniqueTitles([...studioRows, ...genreRows].map(mapTitle), 10) };
+    const tagged = [
+      ...studioRows.map((row) => ({ ...mapTitle(row), reason: "studio" as const })),
+      ...genreRows.map((row) => ({ ...mapTitle(row), reason: "genre" as const }))
+    ];
+    return { items: uniqueTitles(tagged, 10) };
   }
 
   async titles(query: QueryTitlesDto) {
     const take = query.take ?? 24;
+    const includeSlugs = splitSlugs(query.include ?? query.genre);
+    const excludeSlugs = splitSlugs(query.exclude);
+    const episodeFilter: Prisma.EpisodeWhereInput = { ...published };
+    if (query.audio) episodeFilter.audioKind = query.audio;
     const where: Prisma.TitleWhereInput = {
       ...published,
       ...(query.type === "ANIMATION"
@@ -249,12 +257,16 @@ export class CatalogService {
           ? { type: query.type }
           : {}),
       ...(query.status ? { status: query.status } : {}),
-      ...(query.year ? { year: query.year } : {}),
+      ...(query.year
+        ? { year: query.year }
+        : query.yearFrom || query.yearTo
+          ? { year: { ...(query.yearFrom ? { gte: query.yearFrom } : {}), ...(query.yearTo ? { lte: query.yearTo } : {}) } }
+          : {}),
       ...(query.season ? { airSeason: query.season } : {}),
-      ...(query.genre ? { genres: { some: { genre: { slug: query.genre } } } } : {}),
-      ...(query.audio
-        ? { seasons: { some: { episodes: { some: { ...published, audioKind: query.audio } } } } }
+      ...(query.audio || query.hasEpisodes === "1"
+        ? { seasons: { some: { episodes: { some: episodeFilter } } } }
         : {}),
+      ...(query.minRatings ? { scoreCount: { gte: query.minRatings } } : {}),
       ...(query.letter
         ? {
             name: {
@@ -274,9 +286,37 @@ export class CatalogService {
           }
         : {})
     };
+    if (includeSlugs.length) {
+      if (query.match === "all") {
+        const current = Array.isArray(where.AND) ? where.AND : where.AND ? [where.AND] : [];
+        where.AND = [
+          ...current,
+          ...includeSlugs.map((slug) => ({ genres: { some: { genre: { slug } } } }))
+        ];
+      } else {
+        where.genres = { some: { genre: { slug: { in: includeSlugs } } } };
+      }
+    }
+    if (excludeSlugs.length) {
+      where.NOT = { genres: { some: { genre: { slug: { in: excludeSlugs } } } } };
+    }
 
     if (query.letter === "#") {
       where.name = { lt: "A", mode: "insensitive" };
+    }
+
+    if (query.scoreMin != null || query.scoreMax != null) {
+      const min = query.scoreMin ?? 1;
+      const max = query.scoreMax ?? 10;
+      const scored = await this.prisma.$queryRaw<{ id: string }[]>`
+        SELECT "id" FROM "Title"
+        WHERE "scoreCount" > 0
+          AND ("scoreSum"::float / NULLIF("scoreCount", 0)) >= ${min}
+          AND ("scoreSum"::float / NULLIF("scoreCount", 0)) <= ${max}
+      `;
+      const ids = scored.map((row) => row.id);
+      if (!ids.length) return { items: [], total: 0 };
+      where.id = { in: ids };
     }
 
     const orderBy: Prisma.TitleOrderByWithRelationInput =
@@ -288,7 +328,9 @@ export class CatalogService {
             ? { scoreSum: "desc" }
             : query.sort === "updated"
               ? { updatedAt: "desc" }
-              : { viewCount: "desc" };
+              : query.sort === "created"
+                ? { createdAt: "desc" }
+                : { viewCount: "desc" };
 
     if (query.studio) {
       const names = await this.studioNamesForSlug(query.studio);
@@ -327,6 +369,41 @@ export class CatalogService {
     });
     if (!row) throw new NotFoundException("Title not found");
     return mapTitle(row);
+  }
+
+  async reportPlayback(episodeId: string, kind: string, note: string | undefined, userId: string | null) {
+    const episode = await this.prisma.episode.findFirst({ where: { id: episodeId, ...published } });
+    if (!episode) throw new NotFoundException("Episode not found");
+    return this.prisma.playbackReport.create({
+      data: {
+        episodeId,
+        kind,
+        note: note?.trim() || null,
+        userId
+      }
+    });
+  }
+
+  async suggestSkip(
+    episodeId: string,
+    userId: string,
+    marks: { introStartSec?: number; introEndSec?: number; outroStartSec?: number; note?: string }
+  ) {
+    if (marks.introStartSec == null && marks.introEndSec == null && marks.outroStartSec == null) {
+      throw new BadRequestException("Add an intro or ending time");
+    }
+    const episode = await this.prisma.episode.findFirst({ where: { id: episodeId, ...published } });
+    if (!episode) throw new NotFoundException("Episode not found");
+    return this.prisma.skipSuggestion.create({
+      data: {
+        episodeId,
+        userId,
+        introStartSec: marks.introStartSec ?? null,
+        introEndSec: marks.introEndSec ?? null,
+        outroStartSec: marks.outroStartSec ?? null,
+        note: marks.note?.trim() || null
+      }
+    });
   }
 
   async latest(audio?: "SUB" | "DUB", take = 24) {
@@ -432,6 +509,8 @@ export class CatalogService {
       where: { slug, ...published },
       include: {
         genres: { select: { genre: { select: { slug: true, name: true } } } },
+        characters: { orderBy: { sort: "asc" } },
+        artworks: { orderBy: { sort: "asc" } },
         seasons: {
           orderBy: { number: "asc" },
           include: {
@@ -657,6 +736,11 @@ function orderMapped<T extends Parameters<typeof mapTitle>[0] & { id: string }>(
   if (!ids.length) return mapped;
   const byId = new Map(mapped.map((row) => [row.id, row]));
   return ids.map((id) => byId.get(id)).filter((row): row is NonNullable<typeof row> => Boolean(row));
+}
+
+function splitSlugs(value?: string) {
+  if (!value) return [];
+  return [...new Set(value.split(",").map((slug) => slug.trim()).filter(Boolean))].slice(0, 24);
 }
 
 function uniqueTitles<T extends { id: string }>(items: T[], take = items.length) {

@@ -32,6 +32,7 @@ export type TitleCard = {
   episodeTotal?: number;
   windowViews?: number;
   genres: Genre[];
+  reason?: "genre" | "studio";
   seasons?: { number: number; episodes?: { id: string; audioKind?: string; videoUrl?: string | null }[] }[];
   continueEpisodeId?: string;
   progress?: number;
@@ -216,7 +217,25 @@ export type Episode = {
   commentCount?: number | null;
 };
 
+export type TitleCharacter = {
+  id: string;
+  name: string;
+  role: string;
+  imageUrl?: string | null;
+  actor?: string | null;
+};
+
+export type TitleArtwork = {
+  id: string;
+  url: string;
+  caption?: string | null;
+};
+
 export type TitleDetail = Omit<TitleCard, "seasons"> & {
+  trailerUrl?: string | null;
+  producers?: string[];
+  characters?: TitleCharacter[];
+  artworks?: TitleArtwork[];
   seasons: { number: number; name?: string | null; episodes: Episode[] }[];
 };
 

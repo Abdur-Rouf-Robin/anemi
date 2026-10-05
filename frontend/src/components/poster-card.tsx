@@ -7,7 +7,7 @@ import { Check, Play, Plus } from "lucide-react";
 
 import { displayTitle } from "@/lib/display-title";
 import { api } from "@/lib/client-api";
-import type { TitleCard } from "@/lib/types";
+import type { ListStatus, TitleCard } from "@/lib/types";
 import { useLocale } from "@/lib/use-locale";
 import { cn, firstEpisodeId, formatAirDate } from "@/lib/utils";
 import { StatusDot, TitleMeta } from "@/components/title-meta";
@@ -68,24 +68,90 @@ export function PosterArt({
   );
 }
 
+const LIST_STATUSES: { value: ListStatus; label: string }[] = [
+  { value: "WATCHING", label: "Watching" },
+  { value: "PLAN_TO_WATCH", label: "Plan to watch" },
+  { value: "ON_HOLD", label: "On hold" },
+  { value: "DROPPED", label: "Dropped" },
+  { value: "COMPLETED", label: "Completed" }
+];
+
 function CardAddButton({ titleId }: { titleId: string }) {
   const router = useRouter();
-  const [saved, setSaved] = useState(false);
+  const [open, setOpen] = useState(false);
+  const [status, setStatus] = useState<ListStatus | null>(null);
+  const [ready, setReady] = useState(false);
+
+  function load() {
+    if (ready) return;
+    void api<{ listStatus: ListStatus | null }>(`/library/flags/${titleId}`)
+      .then((flags) => {
+        setStatus(flags.listStatus);
+        setReady(true);
+      })
+      .catch(() => setReady(false));
+  }
+
+  async function choose(next: ListStatus | "") {
+    try {
+      if (!next) {
+        await api(`/library/list/${titleId}`, { method: "DELETE" });
+        setStatus(null);
+      } else {
+        const result = await api<{ status: ListStatus }>(`/library/list/${titleId}`, {
+          method: "PUT",
+          body: JSON.stringify({ status: next })
+        });
+        setStatus(result.status);
+      }
+      setReady(true);
+      setOpen(false);
+    } catch {
+      router.push("/account");
+    }
+  }
+
   return (
-    <button
-      type="button"
-      aria-label={saved ? "Saved" : "Add to list"}
-      className="absolute top-2 right-2 z-[3] flex size-8 items-center justify-center rounded-md bg-black/70 text-white opacity-0 shadow-sm backdrop-blur-[2px] transition-opacity duration-150 group-hover:opacity-100 hover:bg-black/85"
-      onClick={(event) => {
-        event.preventDefault();
-        event.stopPropagation();
-        void api<{ saved: boolean }>(`/library/later/${titleId}`, { method: "PUT" })
-          .then((data) => setSaved(data.saved))
-          .catch(() => router.push("/account"));
-      }}
+    <div
+      className="absolute top-2 right-2 z-[3]"
+      onMouseEnter={load}
     >
-      {saved ? <Check className="size-4" strokeWidth={2.25} /> : <Plus className="size-4" strokeWidth={2.25} />}
-    </button>
+      <button
+        type="button"
+        aria-label={status ? "Edit list" : "Add to list"}
+        aria-expanded={open}
+        className="flex size-8 items-center justify-center rounded-md bg-black/70 text-white opacity-0 shadow-sm backdrop-blur-[2px] transition-opacity duration-150 group-hover:opacity-100 hover:bg-black/85"
+        onClick={(event) => {
+          event.preventDefault();
+          event.stopPropagation();
+          load();
+          setOpen((value) => !value);
+        }}
+      >
+        {status ? <Check className="size-4" strokeWidth={2.25} /> : <Plus className="size-4" strokeWidth={2.25} />}
+      </button>
+      {open ? (
+        <div className="absolute top-9 right-0 w-40 rounded-lg bg-canvas p-1 text-ink ring-1 ring-line">
+          {LIST_STATUSES.map((item) => (
+            <button
+              key={item.value}
+              type="button"
+              className={cn(
+                "block w-full rounded-md px-2 py-1.5 text-left text-xs hover:bg-elevated",
+                status === item.value && "font-semibold"
+              )}
+              onClick={(event) => {
+                event.preventDefault();
+                event.stopPropagation();
+                void choose(status === item.value ? "" : item.value);
+              }}
+            >
+              {item.label}
+            </button>
+          ))}
+        </div>
+      ) : null}
+    </div>
   );
 }
 
@@ -142,11 +208,11 @@ export function PosterCard({
     >
       <div
         className={cn(
-          "relative overflow-hidden rounded-[10px] bg-elevated",
+          "relative rounded-[10px] bg-elevated",
           landscape ? "aspect-video" : "aspect-2/3"
         )}
       >
-        <Link href={href} className="absolute inset-0" aria-label={label}>
+        <Link href={href} className="absolute inset-0 overflow-hidden rounded-[10px]" aria-label={label}>
           <PosterArt name={label} hue={title.hue} src={art} className="absolute inset-0" overlay={false} blur={blur} />
         </Link>
         <PosterHover titleId={title.id} />

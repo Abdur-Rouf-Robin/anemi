@@ -163,6 +163,25 @@ export class AdminService {
     return this.prisma.titleRequest.update({ where: { id }, data: { status } });
   }
 
+  playbackReports() {
+    return this.prisma.playbackReport.findMany({
+      orderBy: { createdAt: "desc" },
+      take: 80,
+      include: {
+        user: { select: { displayName: true } },
+        episode: {
+          select: {
+            id: true,
+            name: true,
+            number: true,
+            audioKind: true,
+            season: { select: { number: true, title: { select: { id: true, name: true } } } }
+          }
+        }
+      }
+    });
+  }
+
   reports() {
     return this.prisma.commentReport.findMany({
       orderBy: { createdAt: "desc" },
@@ -472,6 +491,8 @@ export class AdminService {
       where: { id },
       include: {
         genres: { select: { genre: { select: { slug: true, name: true } } } },
+        characters: { orderBy: { sort: "asc" } },
+        artworks: { orderBy: { sort: "asc" } },
         seasons: {
           orderBy: { number: "asc" },
           include: {
@@ -507,6 +528,8 @@ export class AdminService {
         airSeason: dto.airSeason,
         posterUrl: dto.posterUrl,
         backdropUrl: dto.backdropUrl,
+        trailerUrl: dto.trailerUrl?.trim() || null,
+        producers: (dto.producers ?? []).map((name) => name.trim()).filter(Boolean).slice(0, 12),
         publish: PublishStatus.DRAFT,
         seasons: { create: { number: 1 } }
       }
@@ -533,11 +556,108 @@ export class AdminService {
         ageRating: dto.ageRating,
         airSeason: dto.airSeason,
         posterUrl: dto.posterUrl,
-        backdropUrl: dto.backdropUrl
+        backdropUrl: dto.backdropUrl,
+        ...(dto.trailerUrl !== undefined ? { trailerUrl: dto.trailerUrl.trim() || null } : {}),
+        ...(dto.producers !== undefined
+          ? { producers: dto.producers.map((name) => name.trim()).filter(Boolean).slice(0, 12) }
+          : {})
       }
     });
     if (dto.genreSlugs) await this.replaceGenres(id, dto.genreSlugs);
     return title;
+  }
+
+  async addCharacter(titleId: string, dto: { name: string; role?: string; imageUrl?: string; actor?: string }) {
+    await this.requireTitle(titleId);
+    const last = await this.prisma.titleCharacter.findFirst({
+      where: { titleId },
+      orderBy: { sort: "desc" },
+      select: { sort: true }
+    });
+    return this.prisma.titleCharacter.create({
+      data: {
+        titleId,
+        name: dto.name.trim(),
+        role: dto.role === "MAIN" ? "MAIN" : "SUPPORTING",
+        imageUrl: dto.imageUrl?.trim() || null,
+        actor: dto.actor?.trim() || null,
+        sort: (last?.sort ?? 0) + 1
+      }
+    });
+  }
+
+  async deleteCharacter(id: string) {
+    const row = await this.prisma.titleCharacter.findUnique({ where: { id } });
+    if (!row) throw new NotFoundException("Character not found");
+    await this.prisma.titleCharacter.delete({ where: { id } });
+    return { ok: true };
+  }
+
+  async addArtwork(titleId: string, dto: { url: string; caption?: string }) {
+    await this.requireTitle(titleId);
+    const last = await this.prisma.titleArtwork.findFirst({
+      where: { titleId },
+      orderBy: { sort: "desc" },
+      select: { sort: true }
+    });
+    return this.prisma.titleArtwork.create({
+      data: {
+        titleId,
+        url: dto.url.trim(),
+        caption: dto.caption?.trim() || null,
+        sort: (last?.sort ?? 0) + 1
+      }
+    });
+  }
+
+  async deleteArtwork(id: string) {
+    const row = await this.prisma.titleArtwork.findUnique({ where: { id } });
+    if (!row) throw new NotFoundException("Artwork not found");
+    await this.prisma.titleArtwork.delete({ where: { id } });
+    return { ok: true };
+  }
+
+  skipSuggestions() {
+    return this.prisma.skipSuggestion.findMany({
+      where: { status: "OPEN" },
+      orderBy: { createdAt: "desc" },
+      take: 80,
+      include: {
+        user: { select: { displayName: true } },
+        episode: {
+          select: {
+            id: true,
+            name: true,
+            number: true,
+            audioKind: true,
+            introStartSec: true,
+            introEndSec: true,
+            outroStartSec: true,
+            season: { select: { number: true, title: { select: { id: true, name: true } } } }
+          }
+        }
+      }
+    });
+  }
+
+  async applySkipSuggestion(id: string) {
+    const row = await this.prisma.skipSuggestion.findUnique({ where: { id } });
+    if (!row) throw new NotFoundException("Suggestion not found");
+    await this.prisma.episode.update({
+      where: { id: row.episodeId },
+      data: {
+        ...(row.introStartSec != null ? { introStartSec: row.introStartSec } : {}),
+        ...(row.introEndSec != null ? { introEndSec: row.introEndSec } : {}),
+        ...(row.outroStartSec != null ? { outroStartSec: row.outroStartSec } : {})
+      }
+    });
+    return this.prisma.skipSuggestion.update({ where: { id }, data: { status: "APPLIED" } });
+  }
+
+  async declineSkipSuggestion(id: string) {
+    const row = await this.prisma.skipSuggestion.findUnique({ where: { id } });
+    if (!row) throw new NotFoundException("Suggestion not found");
+    return this.prisma.skipSuggestion.update({ where: { id }, data: { status: "DECLINED" } });
   }
 
   async deleteTitle(id: string) {

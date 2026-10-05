@@ -85,4 +85,14 @@ export class UpsertTitleDto {
   @IsString()
   @MaxLength(400)
   backdropUrl?: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(400)
+  trailerUrl?: string;
+
+  @IsOptional()
+  @IsArray()
+  @IsString({ each: true })
+  producers?: string[];
 }

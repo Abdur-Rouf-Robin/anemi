@@ -7,8 +7,10 @@ import { PosterArt } from "@/components/poster-card";
 import { ShareButton } from "@/components/share-button";
 import { TitleActions } from "@/components/title-actions";
 import { NextEpisodeCountdown, TitleEpisodePanel, TitleScores } from "@/components/title-detail";
+import { TitleTrailer } from "@/components/title-trailer";
 import { getRelated, getTitle } from "@/lib/api";
-import { displayTitle } from "@/lib/display-title";
+import { displayTitle, studioSlug } from "@/lib/display-title";
+import { genreKind } from "@/lib/genre-kinds";
 import { t } from "@/lib/i18n";
 import { requestLocale } from "@/lib/request-locale";
 import { absoluteUrl } from "@/lib/site-url";
@@ -58,6 +60,15 @@ export default async function TitlePage({ params }: { params: Promise<{ slug: st
       ? String(title.year)
       : "—";
   const upcoming = title.status === "AIRING" && title.nextAirDate && new Date(title.nextAirDate).getTime() > Date.now();
+  const themes = title.genres.filter((genre) => genreKind(genre.slug) === "theme");
+  const demographics = title.genres.filter((genre) => genreKind(genre.slug) === "demographic");
+  const plainGenres = title.genres.filter((genre) => genreKind(genre.slug) === "genre");
+  const genrePills = plainGenres.length ? plainGenres : title.genres;
+  const broadcast = title.nextAirDate
+    ? new Date(title.nextAirDate).toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" })
+    : "—";
+  const aired = title.episodeCount ?? title.seasons?.reduce((sum, season) => sum + season.episodes.length, 0) ?? 0;
+  const total = title.episodeTotal ?? aired;
 
   return (
     <main className="pb-16">
@@ -111,7 +122,7 @@ export default async function TitlePage({ params }: { params: Promise<{ slug: st
               {title.nameJa ? <p className="text-sm text-muted">{title.nameJa}</p> : null}
               <h1 className="mt-1 text-2xl font-bold tracking-tight uppercase sm:text-4xl">{heading}</h1>
               <div className="mt-3 flex flex-wrap gap-1.5">
-                {title.genres.map((genre) => (
+                {genrePills.map((genre) => (
                   <Link
                     key={genre.slug}
                     href={`/browse?genre=${genre.slug}`}
@@ -136,11 +147,66 @@ export default async function TitlePage({ params }: { params: Promise<{ slug: st
                   <p className="mt-2 max-w-3xl text-sm leading-relaxed text-muted">{title.synopsis}</p>
                 </div>
               ) : null}
+              <dl className="mt-6 grid gap-3 sm:grid-cols-2">
+                {[
+                  ["Type", typeLabel],
+                  ["Status", STATUS_LABEL[title.status] ?? title.status],
+                  ["Release", release],
+                  ["Broadcast", broadcast],
+                  ["Episodes", `${aired}/${total || aired}`],
+                  ["Rating", title.ageRating || "—"],
+                  ["Season", title.airSeason ? title.airSeason[0] + title.airSeason.slice(1).toLowerCase() : "—"],
+                  ["Year", title.year ? String(title.year) : "—"]
+                ].map(([label, value]) => (
+                  <div key={label} className="rounded-lg bg-elevated px-3 py-2 ring-1 ring-line">
+                    <dt className="text-[11px] font-semibold tracking-[0.14em] text-muted uppercase">{label}</dt>
+                    <dd className="mt-1 text-sm font-semibold">{value}</dd>
+                  </div>
+                ))}
+              </dl>
+              {title.trailerUrl ? <TitleTrailer url={title.trailerUrl} /> : null}
+              {title.producers?.length ? (
+                <p className="mt-4 text-sm">
+                  <span className="text-[11px] font-semibold tracking-[0.14em] text-muted uppercase">Producers </span>
+                  <span className="font-semibold">{title.producers.join(", ")}</span>
+                </p>
+              ) : null}
+              {title.studio ? (
+                <p className="mt-4 text-sm">
+                  <span className="text-[11px] font-semibold tracking-[0.14em] text-muted uppercase">Studio </span>
+                  <Link href={`/studio/${studioSlug(title.studio)}`} className="font-semibold hover:text-accent">
+                    {title.studio}
+                  </Link>
+                </p>
+              ) : null}
+              {themes.length ? (
+                <p className="mt-3 flex flex-wrap items-center gap-1.5 text-sm">
+                  <span className="text-[11px] font-semibold tracking-[0.14em] text-muted uppercase">Themes</span>
+                  {themes.map((genre) => (
+                    <Link key={genre.slug} href={`/browse?include=${genre.slug}`} className="rounded-full bg-elevated px-2.5 py-1 text-xs ring-1 ring-line hover:text-ink">
+                      {genre.name}
+                    </Link>
+                  ))}
+                </p>
+              ) : null}
+              {demographics.length ? (
+                <p className="mt-3 flex flex-wrap items-center gap-1.5 text-sm">
+                  <span className="text-[11px] font-semibold tracking-[0.14em] text-muted uppercase">Demographic</span>
+                  {demographics.map((genre) => (
+                    <Link key={genre.slug} href={`/browse?include=${genre.slug}`} className="rounded-full bg-elevated px-2.5 py-1 text-xs ring-1 ring-line hover:text-ink">
+                      {genre.name}
+                    </Link>
+                  ))}
+                </p>
+              ) : null}
               <TitleEpisodePanel
                 seasons={title.seasons ?? []}
                 type={title.type}
                 related={related}
                 art={title.backdropUrl || title.posterUrl}
+                primaryGenre={genrePills[0] ?? null}
+                characters={title.characters ?? []}
+                artworks={title.artworks ?? []}
               />
             </div>
 

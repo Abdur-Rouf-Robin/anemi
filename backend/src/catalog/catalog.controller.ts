@@ -6,6 +6,8 @@ import { CurrentUser } from "../auth/decorators/current-user.decorator";
 import { Public } from "../auth/decorators/public.decorator";
 import { SkipCsrf } from "../auth/decorators/skip-csrf.decorator";
 import { CatalogService } from "./catalog.service";
+import { PlaybackReportDto } from "./dto/playback-report.dto";
+import { SkipSuggestionDto } from "./dto/skip-suggestion.dto";
 import { QueryTitlesDto } from "./dto/query-titles.dto";
 import { RateTitleDto } from "./dto/rate-title.dto";
 
@@ -91,6 +93,28 @@ export class CatalogController {
   @Get("titles")
   titles(@Query() query: QueryTitlesDto) {
     return this.catalog.titles(query);
+  }
+
+  @SkipCsrf()
+  @Post("episodes/:id/playback-report")
+  @HttpCode(200)
+  playbackReport(
+    @Param("id") id: string,
+    @Body() dto: PlaybackReportDto,
+    @CurrentUser() user: AuthUser | null
+  ) {
+    return this.catalog.reportPlayback(id, dto.kind, dto.note, user?.id ?? null);
+  }
+
+  @Post("episodes/:id/skip-suggestion")
+  @HttpCode(200)
+  skipSuggestion(
+    @Param("id") id: string,
+    @Body() dto: SkipSuggestionDto,
+    @CurrentUser() user: AuthUser | null
+  ) {
+    if (!user) throw new UnauthorizedException("Sign in to suggest skip times");
+    return this.catalog.suggestSkip(id, user.id, dto);
   }
 
   @Get("titles/:slug/related")
