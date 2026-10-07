@@ -20,7 +20,8 @@ import { useCallback, useEffect, useRef, useState, type RefObject } from "react"
 import { useSession } from "@/components/session-provider";
 import { api } from "@/lib/client-api";
 import type { Preferences } from "@/lib/types";
-import { defaultPrefs, mergePrefs, prefsPutBody, readLocalPrefs, writeLocalPrefs } from "@/lib/prefs";
+import { defaultPrefs } from "@/lib/prefs";
+import { usePrefs, useSettings } from "@/components/settings/settings-provider";
 import { cn, formatClock, audioTrackLabel, captionTrackLabel } from "@/lib/utils";
 
 import { attachAudioGraph, EQ_BANDS, EQ_PRESETS, type AudioGraph } from "./audio-graph";
@@ -110,6 +111,8 @@ export function MediaPlayer({
   } | null>(null);
   const router = useRouter();
   const { user } = useSession();
+  const livePrefs = usePrefs();
+  const { save } = useSettings();
   const viewedRef = useRef(false);
   const [prefs, setPrefs] = useState<Preferences>(defaultPrefs);
   const prefsRef = useRef(prefs);
@@ -153,6 +156,7 @@ export function MediaPlayer({
   const skippedEnding = useRef(false);
   const hideTimer = useRef<number>(0);
   const loadedSrcRef = useRef("");
+  const autoPlayedRef = useRef("");
   const holdClearRef = useRef<number>(0);
   const episodeReadyRef = useRef(false);
   const [holdFrame, setHoldFrame] = useState<string | null>(null);
@@ -166,8 +170,12 @@ export function MediaPlayer({
   const wakeLockRef = useRef<{ release: () => Promise<void> } | null>(null);
 
   useEffect(() => {
-    const local = readLocalPrefs();
-    setPrefs(local);
+    setPrefs(livePrefs);
+    prefsRef.current = livePrefs;
+    tryAutoPlay();
+  }, [livePrefs]);
+
+  useEffect(() => {
     const storedVol = Number(localStorage.getItem("anemi-volume"));
     const storedSpeed = Number(localStorage.getItem("anemi-speed"));
     const storedCap = localStorage.getItem("anemi-captions");
@@ -177,8 +185,6 @@ export function MediaPlayer({
     if (storedSpeed) setSpeed(storedSpeed);
     if (storedCap === "off") setCaptions(false);
     else if (storedCap === "on") setCaptions(true);
-    else setCaptions(local.enableSubtitles);
-    if (local.viewMode === "theater") setTheater(true);
     if (storedFit === "contain" || storedFit === "cover" || storedFit === "fill") setFit(storedFit);
     if (storedCapSize === "sm" || storedCapSize === "md" || storedCapSize === "lg") setCaptionSize(storedCapSize);
     if (localStorage.getItem("anemi-loop") === "on") setLoop(true);
@@ -193,13 +199,6 @@ export function MediaPlayer({
     }
     setTools(readTools());
   }, []);
-
-  useEffect(() => {
-    if (!user) return;
-    api<Preferences & { settings?: unknown }>("/preferences/me")
-      .then((remote) => setPrefs(mergePrefs(readLocalPrefs(), remote)))
-      .catch(() => undefined);
-  }, [user?.id]);
 
   useEffect(() => {
     viewedRef.current = false;
@@ -351,12 +350,13 @@ export function MediaPlayer({
     }
     const apply = () => {
       const target = start > 2 ? start : 0;
-      if (Number.isFinite(node.duration) && node.duration > 0) {
-        if (Math.abs(node.currentTime - target) < 0.2) {
-          releaseHold();
-          return;
-        }
+      if (Number.isFinite(node.duration) && node.duration > 0 && Math.abs(node.currentTime - target) >= 0.2) {
         node.currentTime = Math.min(target, Math.max(0, node.duration - 0.05));
+      }
+      releaseHold();
+      if (node.readyState >= 3) {
+        setBuffering(false);
+        tryAutoPlay();
       }
     };
     if (node.readyState >= 1) apply();
@@ -472,17 +472,6 @@ export function MediaPlayer({
   }, [lightsOff]);
 
   useEffect(() => {
-    function onPrefs() {
-      const next = readLocalPrefs();
-      setPrefs(next);
-      prefsRef.current = next;
-    }
-    onPrefs();
-    window.addEventListener("anemi-prefs", onPrefs);
-    return () => window.removeEventListener("anemi-prefs", onPrefs);
-  }, []);
-
-  useEffect(() => {
     if (countdown == null || !nextHref) return;
     if (countdown <= 0) {
       go(nextHref);
@@ -525,6 +514,22 @@ export function MediaPlayer({
     const node = videoRef.current;
     if (!node) return;
     node.currentTime = Math.max(0, Math.min(node.duration || duration, to));
+  }
+
+  function tryAutoPlay() {
+    const node = videoRef.current;
+    if (!node || followOnly || mediaError) return;
+    if (!(prefsRef.current.autoStart || prefsRef.current.autoPlay)) return;
+    if (autoPlayedRef.current === episodeId) return;
+    if (!node.paused) {
+      autoPlayedRef.current = episodeId;
+      return;
+    }
+    autoPlayedRef.current = episodeId;
+    void node.play().catch((err: unknown) => {
+      const name = err && typeof err === "object" && "name" in err ? String((err as { name: string }).name) : "";
+      if (name !== "NotAllowedError") autoPlayedRef.current = "";
+    });
   }
 
   function togglePlay() {
@@ -777,14 +782,8 @@ export function MediaPlayer({
   const hasCues = Boolean((localCues ?? cues).length || captionSrc || captionOptions.length);
 
   function patchPref(key: "autoPlay" | "autoNext" | "autoSkipIntro") {
-    const next = { [key]: !prefs[key] };
-    setPrefs((prev) => {
-      const merged = { ...prev, ...next };
-      writeLocalPrefs(merged);
-      prefsRef.current = merged;
-      return merged;
-    });
-    void api("/preferences", { method: "PUT", body: JSON.stringify(prefsPutBody({ ...prefs, ...next })) }).catch(() => undefined);
+    const value = !prefsRef.current[key];
+    void save(key === "autoPlay" ? { autoPlay: value, autoStart: value } : { [key]: value });
   }
 
   const menuItems: PlayerMenuItem[] = [
@@ -1231,6 +1230,10 @@ export function MediaPlayer({
           releaseHold();
         }}
         onWaiting={() => setBuffering(true)}
+        onCanPlay={() => {
+          setBuffering(false);
+          tryAutoPlay();
+        }}
         onPlaying={() => {
           setBuffering(false);
           releaseHold();
@@ -1598,13 +1601,8 @@ export function MediaPlayer({
                 type="checkbox"
                 checked={Boolean(prefs[key as keyof Preferences])}
                 onChange={(event) => {
-                  const next = { [key]: event.target.checked };
-                  setPrefs((prev) => {
-                    const merged = { ...prev, ...next };
-                    writeLocalPrefs(merged);
-                    return merged;
-                  });
-                  void api("/preferences", { method: "PUT", body: JSON.stringify(next) }).catch(() => undefined);
+                  const value = event.target.checked;
+                  void save(key === "autoPlay" ? { autoPlay: value, autoStart: value } : { [key]: value });
                 }}
               />
             </label>

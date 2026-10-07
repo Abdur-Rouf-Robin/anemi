@@ -5,6 +5,7 @@ import { join } from "node:path";
 import { after, before, test } from "node:test";
 
 import { smtpConfigured } from "../src/admin/mailer";
+import { wantsNotice } from "../src/lib/user-settings";
 import { ffmpegAvailable } from "../src/media/ffmpeg";
 import { mediaRoot } from "../src/media/media.paths";
 
@@ -23,6 +24,13 @@ test("smtpConfigured follows SMTP_HOST", () => {
     if (url === undefined) delete process.env.SMTP_URL;
     else process.env.SMTP_URL = url;
   }
+});
+
+test("new episode mail follows the New episodes setting", () => {
+  assert.equal(wantsNotice({}, "episode"), true);
+  assert.equal(wantsNotice({ notifyNewEpisodes: false }, "episode"), false);
+  assert.equal(wantsNotice({ notifyFollows: false }, "follow"), false);
+  assert.equal(wantsNotice({ notifyNewEpisodes: false }, "follow"), true);
 });
 
 test("ffmpegAvailable returns false for a missing binary", async () => {

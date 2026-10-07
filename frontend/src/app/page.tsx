@@ -5,23 +5,24 @@ import { FeaturedProgramme } from "@/components/featured-programme";
 import { GenreShowcase } from "@/components/genre-showcase";
 import { HeroCarousel } from "@/components/hero-carousel";
 import { HomeContinue } from "@/components/home-continue";
-import { LatestReleaseGrid } from "@/components/latest-release-grid";
+import { LatestHome } from "@/components/latest-home";
 import { MediaRail } from "@/components/media-rail";
 import { PopularNow } from "@/components/popular-now";
 import { WatchNextRail } from "@/components/watch-next-rail";
 import { WeekSchedule } from "@/components/week-schedule";
-import { getCommunityPosts, getGenres, getHomeState, getLatest, getLibrary, getRelated, getSchedule } from "@/lib/api";
+import { getCommunityPosts, getDiscover, getGenres, getHomeState, getLatest, getLibrary, getRelated, getSchedule } from "@/lib/api";
 import { DEFAULT_HOME_SECTIONS } from "@/lib/home-config";
 import { uniqueById } from "@/lib/utils";
 
 export default async function HomePage() {
-  const [{ home, live: catalogLive }, library, latest, genres, schedule, posts] = await Promise.all([
+  const [{ home, live: catalogLive }, library, latest, genres, schedule, posts, discover] = await Promise.all([
     getHomeState(),
     getLibrary(),
-    getLatest(),
+    getLatest(undefined, 48),
     getGenres(),
     getSchedule(),
-    getCommunityPosts(undefined, 5)
+    getCommunityPosts(undefined, 5),
+    getDiscover()
   ]);
   const show = { ...DEFAULT_HOME_SECTIONS, ...home.homeSections };
   const continueItems = uniqueById(library?.continueWatching ?? []);
@@ -43,9 +44,20 @@ export default async function HomePage() {
       {show.featuredFilm && films.length ? <FeaturedProgramme items={films} /> : null}
 
       <div className="page-shell grid items-start gap-8 xl:grid-cols-[minmax(0,1.4fr)_minmax(18rem,22rem)]">
-        {show.latest ? <LatestReleaseGrid items={latest?.items ?? []} flush /> : <div />}
+        {show.latest ? <LatestHome items={latest?.items ?? []} /> : <div />}
         {show.popular ? <PopularNow charts={charts} trending={uniqueById(home.trending)} flush /> : null}
       </div>
+
+      {discover?.seasonal?.length ? (
+        <MediaRail
+          title={`This season · ${discover.season.charAt(0)}${discover.season.slice(1).toLowerCase()}`}
+          items={uniqueById(discover.seasonal)}
+          href={`/browse?season=${discover.season}`}
+        />
+      ) : null}
+      {discover?.updated?.length ? (
+        <MediaRail title="Recently updated" items={uniqueById(discover.updated)} href="/browse?sort=updated" />
+      ) : null}
 
       {show.airingSoon ? <AiringSoonRail items={uniqueById(home.upcoming ?? [])} /> : null}
       {show.genres ? <GenreShowcase genres={genreTabs} /> : null}

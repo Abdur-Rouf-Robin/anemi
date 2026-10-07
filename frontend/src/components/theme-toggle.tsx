@@ -3,11 +3,11 @@
 import { Moon, Sun } from "lucide-react";
 import { useEffect, useState } from "react";
 
-import { api } from "@/lib/client-api";
 import { setTheme } from "@/components/theme-provider";
-import { prefsPutBody, readLocalPrefs } from "@/lib/prefs";
+import { useSettings } from "@/components/settings/settings-provider";
 
 export function ThemeToggle() {
+  const { save } = useSettings();
   const [theme, setLocal] = useState<"dark" | "light">("light");
 
   useEffect(() => {
@@ -18,10 +18,7 @@ export function ThemeToggle() {
     const next = theme === "dark" ? "light" : "dark";
     setLocal(next);
     setTheme(next);
-    void api("/preferences", {
-      method: "PUT",
-      body: JSON.stringify(prefsPutBody(readLocalPrefs(), { theme: next }))
-    }).catch(() => undefined);
+    void save({ theme: next });
   }
 
   return (

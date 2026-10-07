@@ -97,7 +97,18 @@ export default async function BrowsePage({
 
   return (
     <main className="page-shell py-8 pb-16 xl:py-10">
-      <PageHeader title={t(locale, "Series")} blurb={t(locale, "Browse our collection of series")} uppercase />
+      <PageHeader
+        title={t(locale, params.type === "MOVIE" ? "Movies" : params.type === "SERIES" ? "TV Series" : "Series")}
+        blurb={t(
+          locale,
+          params.type === "MOVIE"
+            ? "Films in this catalog"
+            : params.type === "SERIES"
+              ? "TV series in this catalog"
+              : "Browse our collection of series"
+        )}
+        uppercase
+      />
       <div className="page-rule" />
       <FilterDrawer path="/browse" params={params} genres={genres} studios={studios} />
       <PosterGrid items={catalog.items} />

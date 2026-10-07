@@ -5,7 +5,7 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useState } 
 import { useSession } from "@/components/session-provider";
 import { applyAppearance } from "@/lib/user-settings";
 import { api } from "@/lib/client-api";
-import { defaultPrefs, LIGHT_CHROME_JUST, mergePrefs, prefsPutBody, readLocalPrefs, writeLocalPrefs } from "@/lib/prefs";
+import { defaultPrefs, mergePrefs, prefsPutBody, readLocalPrefs, setActivePrefsUser, writeLocalPrefs } from "@/lib/prefs";
 import type { Preferences } from "@/lib/types";
 
 export type SettingsTab =
@@ -66,28 +66,29 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   useEffect(() => {
-    if (!user) return;
+    if (!user) {
+      setActivePrefsUser(null);
+      const local = readLocalPrefs();
+      setPrefs(local);
+      applyAppearance(local);
+      return;
+    }
+    setActivePrefsUser(user.id);
+    let gone = false;
     api<Preferences & { settings?: unknown }>("/preferences/me")
       .then((remote) => {
-        const local = readLocalPrefs();
-        let merged = mergePrefs(local, remote);
-        if (sessionStorage.getItem(LIGHT_CHROME_JUST) === "1") {
-          sessionStorage.removeItem(LIGHT_CHROME_JUST);
-          if (local.theme === "light") {
-            merged = { ...merged, theme: "light" };
-            void api("/preferences", {
-              method: "PUT",
-              body: JSON.stringify(prefsPutBody(merged))
-            }).catch(() => undefined);
-          }
-        }
-        setPrefs(merged);
-        writeLocalPrefs(merged);
-        applyAppearance(merged);
-        document.documentElement.classList.toggle("light", merged.theme === "light");
-        document.documentElement.style.colorScheme = merged.theme === "light" ? "light" : "dark";
+        if (gone) return;
+        const account = mergePrefs(defaultPrefs, remote);
+        setPrefs(account);
+        writeLocalPrefs(account);
+        applyAppearance(account);
+        document.documentElement.classList.toggle("light", account.theme === "light");
+        document.documentElement.style.colorScheme = account.theme === "light" ? "light" : "dark";
       })
       .catch(() => undefined);
+    return () => {
+      gone = true;
+    };
   }, [user]);
 
   const openSettings = useCallback((next?: SettingsTab) => {
@@ -146,8 +147,10 @@ export function useSettings() {
 }
 
 export function usePrefs() {
+  const ctx = useContext(SettingsContext);
   const [prefs, setPrefs] = useState<Preferences>(defaultPrefs);
   useEffect(() => {
+    if (ctx) return;
     const sync = () => setPrefs(readLocalPrefs());
     const frame = window.requestAnimationFrame(sync);
     window.addEventListener("anemi-prefs", sync);
@@ -155,6 +158,6 @@ export function usePrefs() {
       window.cancelAnimationFrame(frame);
       window.removeEventListener("anemi-prefs", sync);
     };
-  }, []);
-  return prefs;
+  }, [ctx]);
+  return ctx?.prefs ?? prefs;
 }

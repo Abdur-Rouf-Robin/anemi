@@ -1,17 +1,15 @@
 "use client";
 
-import { api } from "@/lib/client-api";
-import { prefsPutBody, readLocalPrefs, writeLocalPrefs } from "@/lib/prefs";
+import { useSettings } from "@/components/settings/settings-provider";
 import { useLocale } from "@/lib/use-locale";
 import { cn } from "@/lib/utils";
 
 export function LocaleSwitch({ compact = false }: { compact?: boolean }) {
   const locale = useLocale();
+  const { save } = useSettings();
 
   function setLocale(nextLocale: "en" | "jp") {
-    const next = { ...readLocalPrefs(), locale: nextLocale };
-    writeLocalPrefs(next);
-    void api("/preferences", { method: "PUT", body: JSON.stringify(prefsPutBody(next, { locale: nextLocale })) }).catch(() => undefined);
+    void save({ locale: nextLocale });
   }
 
   return (

@@ -6,15 +6,18 @@ import { useEffect } from "react";
 import {
   Bookmark,
   CalendarDays,
+  ChartNoAxesColumn,
   Clock,
   Compass,
   Eye,
+  Film,
   List,
   Plus,
   Rss,
   Settings,
   Shuffle,
   BookOpen,
+  Text,
   UserRound
 } from "lucide-react";
 
@@ -35,7 +38,10 @@ const groups = [
       { href: "/discover", label: "Discover", icon: Compass },
       { href: "/random", label: "Random", icon: Shuffle },
       { href: "/latest", label: "Latest Episodes", icon: Clock },
-      { href: "/schedule", label: "Schedule", icon: CalendarDays }
+      { href: "/schedule", label: "Schedule", icon: CalendarDays },
+      { href: "/browse?type=MOVIE", label: "Movies", icon: Film },
+      { href: "/charts", label: "Top 10", icon: ChartNoAxesColumn },
+      { href: "/az", label: "A–Z", icon: Text }
     ]
   },
   {
@@ -52,6 +58,7 @@ const groups = [
 
 function navActive(pathname: string, href: string, exact?: boolean) {
   const path = href.split("#")[0] ?? href;
+  if (path.includes("?")) return false;
   if (exact) return pathname === path;
   if (path === "/account") return pathname === "/account" || pathname.startsWith("/u/");
   if (path === "/library") return pathname === "/library";

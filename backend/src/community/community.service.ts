@@ -1,7 +1,7 @@
 import { Injectable } from "@nestjs/common";
 
 import { PrismaService } from "../prisma/prisma.service";
-import { sanitizeUserSettings } from "../lib/user-settings";
+import { sanitizeUserSettings, wantsNotice } from "../lib/user-settings";
 import type { ContactDto, CreatePostDto, CreateRequestDto, NewsletterDto, PreferencesDto } from "./dto/community.dto";
 import { mailFrom, mailTransport, smtpConfigured } from "../admin/mailer";
 import { publicSiteUrl } from "../lib/public-site-url";
@@ -10,36 +10,38 @@ import { publicSiteUrl } from "../lib/public-site-url";
 export class CommunityService {
   constructor(private readonly prisma: PrismaService) {}
 
-  async notifyFollowers(titleId: string, title: string, body: string, href: string) {
+  async notifyFollowers(titleId: string, title: string, body: string, href: string, channel: "episode" | "follow" = "episode") {
     const follows = await this.prisma.follow.findMany({
       where: { titleId },
       select: { userId: true }
     });
     if (!follows.length) return;
+    const users = await this.prisma.user.findMany({
+      where: { id: { in: follows.map((row) => row.userId) } },
+      select: { id: true, email: true, settings: true }
+    });
+    const recipients = users.filter((user) => wantsNotice(user.settings, channel));
+    if (!recipients.length) return;
     await this.prisma.notification.createMany({
-      data: follows.map((row) => ({
-        userId: row.userId,
-        kind: "episode",
+      data: recipients.map((user) => ({
+        userId: user.id,
+        kind: channel,
         title,
         body,
         href
       }))
     });
-    if (!smtpConfigured()) return;
+    if (channel !== "episode" || !smtpConfigured()) return;
     const transport = mailTransport();
     if (!transport) return;
-    const users = await this.prisma.user.findMany({
-      where: { id: { in: follows.map((row) => row.userId) } },
-      select: { email: true }
-    });
     const link = `${publicSiteUrl()}${href}`;
-    for (const user of users) {
+    for (const user of recipients) {
       try {
         await transport.sendMail({
           from: mailFrom(),
           to: user.email,
-          subject: title,
-          text: `${body}\n\n${link}`
+          subject: `New episode: ${title}`,
+          text: `${body}\n\nWatch it on Anemi:\n${link}`
         });
       } catch {
         /* publish still succeeds if mail fails */

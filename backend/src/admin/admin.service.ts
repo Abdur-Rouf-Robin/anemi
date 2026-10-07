@@ -752,7 +752,7 @@ export class AdminService {
       data: { publish }
     });
     if (publish === PublishStatus.PUBLISHED) {
-      await this.community.notifyFollowers(id, title.name, `${title.name} is now on Anemi.`, `/title/${title.slug}`);
+      await this.community.notifyFollowers(id, title.name, `${title.name} is now on Anemi.`, `/title/${title.slug}`, "follow");
     }
     return next;
   }
@@ -819,6 +819,14 @@ export class AdminService {
         publish: dto.publish ?? PublishStatus.DRAFT
       }
     });
+    if (episode.publish === PublishStatus.PUBLISHED) {
+      await this.community.notifyFollowers(
+        title.id,
+        title.name,
+        `Episode ${episode.number} is up: ${episode.name}`,
+        `/watch/${episode.id}`
+      );
+    }
     return episode;
   }
 

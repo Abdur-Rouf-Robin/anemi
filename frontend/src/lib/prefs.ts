@@ -40,17 +40,27 @@ export function mergePrefs(base: Preferences, patch: Partial<Preferences> & { se
   };
 }
 
+let activeUserId: string | null = null;
+
+export function setActivePrefsUser(userId: string | null) {
+  activeUserId = userId;
+}
+
+function storageKey() {
+  return activeUserId ? `${KEY}:${activeUserId}` : KEY;
+}
+
 export function readLocalPrefs(): Preferences {
   if (typeof window === "undefined") return defaultPrefs;
   try {
-    const raw = localStorage.getItem(KEY);
+    const raw = localStorage.getItem(storageKey());
     const parsed = raw ? (JSON.parse(raw) as Partial<Preferences> & { settings?: unknown }) : {};
     const locale = asLocale(parsed.locale === "jp" || cookieLocale() === "jp" ? "jp" : "en");
-    if (localStorage.getItem(LIGHT_CHROME_FLAG) !== "1") {
+    if (!activeUserId && localStorage.getItem(LIGHT_CHROME_FLAG) !== "1") {
       localStorage.setItem(LIGHT_CHROME_FLAG, "1");
       sessionStorage.setItem(LIGHT_CHROME_JUST, "1");
       const migrated = mergePrefs(defaultPrefs, { ...parsed, theme: "light", locale });
-      localStorage.setItem(KEY, JSON.stringify(migrated));
+      localStorage.setItem(storageKey(), JSON.stringify(migrated));
       localStorage.setItem("anemi-theme", "light");
       return migrated;
     }
@@ -62,7 +72,7 @@ export function readLocalPrefs(): Preferences {
 }
 
 export function writeLocalPrefs(prefs: Preferences) {
-  localStorage.setItem(KEY, JSON.stringify(prefs));
+  localStorage.setItem(storageKey(), JSON.stringify(prefs));
   localStorage.setItem("anemi-theme", prefs.theme);
   document.cookie = `anemi_locale=${prefs.locale};path=/;max-age=31536000;samesite=lax`;
   window.dispatchEvent(new Event("anemi-locale"));

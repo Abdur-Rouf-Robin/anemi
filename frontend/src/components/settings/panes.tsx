@@ -878,7 +878,7 @@ export function NotificationsPane({ prefs, save, query }: { prefs: Preferences; 
           <NoteBox>Push notifications are not supported in this browser. Try using Chrome, Edge, or Firefox.</NoteBox>
         ) : null}
         {pushNote ? <p className="text-sm text-red-600">{pushNote}</p> : null}
-        <SettingRow title="New episodes" description="When a title you follow gets a new episode." hidden={!matches(query, "New episodes")}>
+        <SettingRow title="New episodes" description="Email and inbox notice when a title you follow gets a new episode." hidden={!matches(query, "New episodes")}>
           <ToggleSwitch checked={prefs.notifyNewEpisodes} onChange={(notifyNewEpisodes) => void save({ notifyNewEpisodes })} label="New episodes" />
         </SettingRow>
         <SettingRow title="Follow activity" description="Staff publishes and follow-related inbox items." hidden={!matches(query, "Follow")}>

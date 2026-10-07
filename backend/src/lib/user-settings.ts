@@ -350,6 +350,11 @@ export function sanitizeUserSettings(raw: unknown): UserSettings {
   return next;
 }
 
+export function wantsNotice(raw: unknown, channel: "episode" | "follow") {
+  const settings = sanitizeUserSettings(raw);
+  return channel === "episode" ? settings.notifyNewEpisodes : settings.notifyFollows;
+}
+
 export function parseUserAgent(ua: string | undefined) {
   const raw = ua ?? "";
   let os = "Unknown";
