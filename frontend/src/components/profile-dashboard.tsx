@@ -195,6 +195,14 @@ export function ProfileDashboard({
           Stats Image
           <ExternalLink className="size-3.5 text-muted" />
         </button>
+        {mine ? (
+          <>
+            <Link href="/library" className="profile-btn profile-btn-ghost">Collection</Link>
+            <Link href="/library/playlists" className="profile-btn profile-btn-ghost">Lists</Link>
+            <Link href="/history" className="profile-btn profile-btn-ghost">Watch History</Link>
+            <Link href="/notifications" className="profile-btn profile-btn-ghost">Updates</Link>
+          </>
+        ) : null}
         <a href="#watch-activity" className="profile-btn profile-btn-ghost">
           <BarChart3 className="size-4" />
           Advanced Stats

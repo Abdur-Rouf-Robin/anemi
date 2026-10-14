@@ -8,12 +8,14 @@ import { SectionHead } from "./section-head";
 
 export async function MediaRail({
   title,
+  blurb,
   items,
   href,
   showAirDate,
   flush
 }: {
   title: string;
+  blurb?: string;
   items: TitleCard[];
   href?: string;
   showAirDate?: boolean;
@@ -26,7 +28,10 @@ export async function MediaRail({
   return (
     <section className="space-y-4">
       <div className={shell || undefined}>
-        <SectionHead title={t(locale, title)} href={href} hrefLabel={t(locale, "Show all")} />
+        <div>
+          <SectionHead title={t(locale, title)} href={href} hrefLabel={t(locale, "Show all")} />
+          {blurb ? <p className="-mt-3 text-sm text-muted">{t(locale, blurb)}</p> : null}
+        </div>
       </div>
       <div className={`${shell} no-scrollbar flex gap-4 overflow-x-auto pb-2`.trim()}>
         {cards.map((item, index) => (

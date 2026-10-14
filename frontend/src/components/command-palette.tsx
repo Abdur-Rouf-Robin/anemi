@@ -7,6 +7,47 @@ import { api } from "@/lib/client-api";
 import { TitleHitRow } from "@/components/poster-card";
 import type { TitleCard } from "@/lib/types";
 
+const COMMANDS: { href: string; label: string; primary?: boolean }[] = [
+  { href: "/", label: "Home", primary: true },
+  { href: "/browse", label: "Browse", primary: true },
+  { href: "/browse?type=MOVIE", label: "Movies", primary: true },
+  { href: "/browse?type=SERIES", label: "TV Series", primary: true },
+  { href: "/browse?type=OVA", label: "OVAs" },
+  { href: "/browse?type=ONA", label: "ONAs" },
+  { href: "/browse?type=SPECIAL", label: "Specials" },
+  { href: "/discover", label: "Discover", primary: true },
+  { href: "/discover?tab=trending", label: "Trending", primary: true },
+  { href: "/discover?tab=top-rated", label: "Top Rated" },
+  { href: "/charts", label: "Most popular", primary: true },
+  { href: "/browse?sort=score", label: "Highest rated" },
+  { href: "/browse?status=AIRING", label: "Airing", primary: true },
+  { href: "/browse?status=UPCOMING", label: "Upcoming", primary: true },
+  { href: "/browse?status=COMPLETED", label: "Completed" },
+  { href: "/latest", label: "Latest Episodes", primary: true },
+  { href: "/schedule", label: "Schedule", primary: true },
+  { href: "/random", label: "Random", primary: true },
+  { href: "/az", label: "A–Z", primary: true },
+  { href: "/studios", label: "Studios" },
+  { href: "/community", label: "Community", primary: true },
+  { href: "/together", label: "Watch together", primary: true },
+  { href: "/library", label: "Collection", primary: true },
+  { href: "/library/playlists", label: "Lists" },
+  { href: "/history", label: "Watch History", primary: true },
+  { href: "/notifications", label: "Updates" },
+  { href: "/request", label: "Request Series", primary: true },
+  { href: "/faq", label: "FAQ" },
+  { href: "/terms", label: "Terms of Service" },
+  { href: "/privacy", label: "Privacy Policy" },
+  { href: "/contact", label: "Contact" },
+  { href: "/dmca", label: "DMCA" },
+  { href: "/settings", label: "Settings", primary: true },
+  { href: "/admin", label: "CMS overview" },
+  { href: "/admin/titles", label: "CMS titles" },
+  { href: "/admin/requests", label: "CMS requests" },
+  { href: "/admin/comments", label: "CMS comments" },
+  { href: "/admin/users", label: "CMS users" }
+];
+
 export function CommandPalette() {
   const router = useRouter();
   const pathname = usePathname();
@@ -62,40 +103,11 @@ export function CommandPalette() {
           className="h-12 w-full bg-transparent px-4 text-sm outline-none"
         />
         <ul className="max-h-80 divide-y divide-line overflow-y-auto">
-          {(
-            [
-              ["/", "Home"],
-              ["/browse", "Browse"],
-              ["/browse?type=MOVIE", "Movies"],
-              ["/browse?type=SERIES", "Series"],
-              ["/browse?type=ANIMATION", "Animation"],
-              ["/browse?status=UPCOMING", "Coming soon"],
-              ["/discover", "Discover"],
-              ["/schedule", "Schedule"],
-              ["/az", "A–Z"],
-              ["/latest", "Latest Episodes"],
-              ["/charts", "Top 10"],
-              ["/studios", "Studios"],
-              ["/community", "Community"],
-              ["/together", "Watch together"],
-              ["/notifications", "Updates"],
-              ["/settings", "Settings"],
-              ["/library", "Collection"],
-              ["/library/playlists", "Lists"],
-              ["/history", "Watch History"],
-              ["/request", "Request Series"],
-              ["/admin", "CMS overview"],
-              ["/admin/titles", "CMS titles"],
-              ["/admin/requests", "CMS requests"],
-              ["/admin/comments", "CMS comments"],
-              ["/admin/newsletter", "CMS newsletter"],
-              ["/admin/encodes", "CMS encodes"],
-              ["/admin/users", "CMS users"],
-              ["/admin/settings", "CMS site"],
-              ["/admin/contact", "CMS contact"],
-              ["/contact", "Contact"]
-            ] as const
-          ).map(([href, label]) => (
+          {COMMANDS.filter((command) => {
+            const query = q.trim().toLowerCase();
+            if (!query) return command.primary;
+            return command.label.toLowerCase().includes(query);
+          }).map(({ href, label }) => (
             <li key={href}>
               <button
                 type="button"

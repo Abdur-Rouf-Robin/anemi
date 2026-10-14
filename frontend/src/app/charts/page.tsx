@@ -6,7 +6,7 @@ import { PosterGrid } from "@/components/poster-card";
 import { TopCharts } from "@/components/top-charts";
 import { getCharts } from "@/lib/api";
 
-export const metadata: Metadata = { title: "Top 10" };
+export const metadata: Metadata = { title: "Most popular" };
 
 export default async function ChartsPage() {
   const charts = await getCharts();
@@ -16,7 +16,7 @@ export default async function ChartsPage() {
     <main className="page-shell space-y-8 py-8 pb-16">
       <PageIntro
         kicker="Charts"
-        title="Top 10"
+        title="Most popular"
         blurb="Most watched titles today, this week, and this month — from views on this catalog."
       />
       <div className="grid items-start gap-8 xl:grid-cols-[minmax(0,1fr)_minmax(18rem,22rem)]">

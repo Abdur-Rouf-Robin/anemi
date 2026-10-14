@@ -38,7 +38,7 @@ export const SETTINGS_SEARCH = [
   { tab: "privacy" as SettingsTab, title: "Basic Stats", description: "Total shows and watch time" },
   { tab: "privacy" as SettingsTab, title: "Favorites", description: "Number of favorites" },
   { tab: "privacy" as SettingsTab, title: "Completion Stats", description: "Mean score and rates" },
-  { tab: "appearance" as SettingsTab, title: "Theme", description: "Zinc Rose Blue Green Orange" },
+  { tab: "appearance" as SettingsTab, title: "Theme", description: "Zinc Slate Stone Neutral Midnight Violet Rose Ocean Obsidian" },
   { tab: "appearance" as SettingsTab, title: "Enable Custom Theme", description: "Custom colors" },
   { tab: "site" as SettingsTab, title: "Title Language", description: "English or Romaji" },
   { tab: "site" as SettingsTab, title: "Show Filler Episodes", description: "Include filler" },

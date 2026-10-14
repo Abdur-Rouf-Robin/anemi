@@ -50,13 +50,19 @@ export default async function HomePage() {
 
       {discover?.seasonal?.length ? (
         <MediaRail
-          title={`This season · ${discover.season.charAt(0)}${discover.season.slice(1).toLowerCase()}`}
+          title="This Season"
+          blurb={`${discover.season.charAt(0)}${discover.season.slice(1).toLowerCase()}${discover.seasonal.find((item) => item.year)?.year ? ` ${discover.seasonal.find((item) => item.year)?.year}` : ""} · Currently airing shows`}
           items={uniqueById(discover.seasonal)}
           href={`/browse?season=${discover.season}`}
         />
       ) : null}
       {discover?.updated?.length ? (
-        <MediaRail title="Recently updated" items={uniqueById(discover.updated)} href="/browse?sort=updated" />
+        <MediaRail
+          title="Recently Updated"
+          blurb="New additions & updates"
+          items={uniqueById(discover.updated)}
+          href="/browse?sort=updated"
+        />
       ) : null}
 
       {show.airingSoon ? <AiringSoonRail items={uniqueById(home.upcoming ?? [])} /> : null}

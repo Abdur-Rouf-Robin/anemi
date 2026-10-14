@@ -47,10 +47,14 @@ export type CarouselDragMap = Record<CarouselSection, boolean>;
 
 export const PRESET_THEMES = [
   { name: "zinc", label: "Zinc", swatch: "#71717a" },
+  { name: "slate", label: "Slate", swatch: "#64748b" },
+  { name: "stone", label: "Stone", swatch: "#78716c" },
+  { name: "neutral", label: "Neutral", swatch: "#737373" },
+  { name: "midnight", label: "Midnight", swatch: "#4338ca" },
+  { name: "violet", label: "Violet", swatch: "#7c3aed" },
   { name: "rose", label: "Rose", swatch: "#e11d48" },
-  { name: "blue", label: "Blue", swatch: "#2563eb" },
-  { name: "green", label: "Green", swatch: "#16a34a" },
-  { name: "orange", label: "Orange", swatch: "#ea580c" }
+  { name: "ocean", label: "Ocean", swatch: "#0284c7" },
+  { name: "obsidian", label: "Obsidian", swatch: "#27272a" }
 ] as const;
 
 export type PresetTheme = (typeof PRESET_THEMES)[number]["name"];
@@ -318,7 +322,9 @@ export function pickExtraSettings(value: Partial<ExtraSettings> | Record<string,
     else (next[key] as number) = n;
   }
   if (typeof src.customThemeName === "string") next.customThemeName = src.customThemeName.trim().slice(0, 40) || defaultExtraSettings.customThemeName;
-  next.colorTheme = asEnum(src.colorTheme, [...PRESET_THEMES.map((item) => item.name), "custom"] as const, "zinc");
+  const legacyTheme: Record<string, string> = { blue: "ocean", green: "slate", orange: "rose" };
+  const themeName = typeof src.colorTheme === "string" ? (legacyTheme[src.colorTheme] ?? src.colorTheme) : src.colorTheme;
+  next.colorTheme = asEnum(themeName, [...PRESET_THEMES.map((item) => item.name), "custom"] as const, "zinc");
   next.titleLanguage = asEnum(src.titleLanguage, ["english", "romaji"] as const, "english");
   next.viewMode = asEnum(src.viewMode, ["immersive", "theater"] as const, "immersive");
   next.fullscreenTarget = asEnum(src.fullscreenTarget, ["player", "document"] as const, "player");
@@ -339,10 +345,14 @@ const COLOR_VAR: Record<string, string> = Object.fromEntries(COLOR_FIELDS.map((f
 
 const PRESET_ACCENT: Record<PresetTheme, { dark: string; light: string }> = {
   zinc: { dark: "#a1a1aa", light: "#3f3f46" },
+  slate: { dark: "#94a3b8", light: "#475569" },
+  stone: { dark: "#a8a29e", light: "#78716c" },
+  neutral: { dark: "#a3a3a3", light: "#525252" },
+  midnight: { dark: "#818cf8", light: "#4338ca" },
+  violet: { dark: "#a78bfa", light: "#7c3aed" },
   rose: { dark: "#fb7185", light: "#e11d48" },
-  blue: { dark: "#60a5fa", light: "#2563eb" },
-  green: { dark: "#4ade80", light: "#16a34a" },
-  orange: { dark: "#fb923c", light: "#ea580c" }
+  ocean: { dark: "#38bdf8", light: "#0284c7" },
+  obsidian: { dark: "#d4d4d8", light: "#27272a" }
 };
 
 export function applyAppearance(prefs: {

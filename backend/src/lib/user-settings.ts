@@ -326,7 +326,13 @@ export function sanitizeUserSettings(raw: unknown): UserSettings {
   }
   next.customThemeName =
     typeof src.customThemeName === "string" ? src.customThemeName.trim().slice(0, 40) || defaultUserSettings.customThemeName : defaultUserSettings.customThemeName;
-  next.colorTheme = asEnum(src.colorTheme, ["zinc", "rose", "blue", "green", "orange", "custom"], "zinc");
+  const legacyTheme: Record<string, string> = { blue: "ocean", green: "slate", orange: "rose" };
+  const themeName = typeof src.colorTheme === "string" ? (legacyTheme[src.colorTheme] ?? src.colorTheme) : src.colorTheme;
+  next.colorTheme = asEnum(
+    themeName,
+    ["zinc", "slate", "stone", "neutral", "midnight", "violet", "rose", "ocean", "obsidian", "custom"],
+    "zinc"
+  );
   next.titleLanguage = asEnum(src.titleLanguage, ["english", "romaji"], "english");
   next.viewMode = asEnum(src.viewMode, ["immersive", "theater"], "immersive");
   next.fullscreenTarget = asEnum(src.fullscreenTarget, ["player", "document"], "player");

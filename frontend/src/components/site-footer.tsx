@@ -69,18 +69,23 @@ export function SiteFooter({ genres = [] }: { genres?: { slug: string; name: str
           title="Watch"
           links={[
             ["/latest", "Latest"],
-            ["/feed/latest.xml", "RSS"],
+            ["/browse?type=MOVIE", "Movies"],
+            ["/browse?type=SERIES", "TV Series"],
             ["/schedule", "Schedule"],
+            ["/feed/latest.xml", "RSS"],
             ["/feed/schedule.ics", "Calendar"]
           ]}
         />
         <FooterCol
           title="Discover"
           links={[
+            ["/discover?tab=trending", "Trending"],
+            ["/charts", "Most popular"],
             ["/browse?sort=score", "Highest rated"],
-            ["/charts", "Top 10"],
-            ["/studios", "Studios"],
-            ["/az", "A–Z index"]
+            ["/browse?status=AIRING", "Airing"],
+            ["/browse?status=UPCOMING", "Upcoming"],
+            ["/az", "A–Z index"],
+            ["/studios", "Studios"]
           ]}
         />
         <FooterCol

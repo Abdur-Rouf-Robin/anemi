@@ -54,7 +54,7 @@ export function PopularNow({
   trending: TitleCard[];
   flush?: boolean;
 }) {
-  const [windowKey, setWindowKey] = useState<"day" | "week" | "month">("week");
+  const [windowKey, setWindowKey] = useState<"day" | "week" | "month">("day");
   const top = uniqueById(trending).slice(0, flush ? 8 : 5);
   const rising = uniqueById(charts?.[windowKey] ?? charts?.week ?? trending).slice(0, flush ? 8 : 5);
   if (!top.length && !rising.length) return null;
@@ -63,20 +63,29 @@ export function PopularNow({
     const items = rising.length ? rising : top;
     return (
       <section className="overflow-hidden rounded-xl bg-surface ring-1 ring-line">
-        <div className="flex items-center justify-between gap-2 px-4 pt-4 pb-2">
-          <h2 className="text-lg font-semibold">Popular</h2>
+        <div className="flex items-start justify-between gap-2 px-4 pt-4 pb-2">
+          <div>
+            <h2 className="text-lg font-semibold tracking-tight">Popular Shows</h2>
+            <p className="text-sm text-muted">Trending by views</p>
+          </div>
           <div className="flex gap-1">
-            {(["day", "week", "month"] as const).map((key) => (
+            {(
+              [
+                ["day", "Today"],
+                ["week", "This Week"],
+                ["month", "This Month"]
+              ] as const
+            ).map(([key, label]) => (
               <button
                 key={key}
                 type="button"
                 onClick={() => setWindowKey(key)}
                 className={cn(
-                  "rounded-full px-2 py-0.5 text-[11px] font-semibold uppercase",
+                  "rounded-full px-2 py-0.5 text-[11px] font-semibold",
                   windowKey === key ? "chip-on" : "text-muted hover:text-ink"
                 )}
               >
-                {key}
+                {label}
               </button>
             ))}
           </div>

@@ -39,6 +39,8 @@ import {
 } from "./panes";
 import { useSettings, type SettingsTab } from "./settings-provider";
 
+const GUEST_TABS = new Set<SettingsTab>(["appearance", "site", "player", "subtitles"]);
+
 const NAV: { id: SettingsTab; label: string; icon: typeof Settings }[] = [
   { id: "account", label: "Account", icon: UserRound },
   { id: "profile", label: "Profile", icon: Users },
@@ -73,19 +75,25 @@ export function SettingsModal() {
   const router = useRouter();
 
   const filteredNav = useMemo(() => {
+    const base = user ? NAV : NAV.filter((item) => GUEST_TABS.has(item.id));
     const q = query.trim().toLowerCase();
-    if (!q) return NAV;
+    if (!q) return base;
     const hits = new Set(
       SETTINGS_SEARCH.filter((row) => `${row.title} ${row.description}`.toLowerCase().includes(q)).map((row) => row.tab)
     );
-    NAV.filter((item) => item.label.toLowerCase().includes(q)).forEach((item) => hits.add(item.id));
-    return NAV.filter((item) => hits.has(item.id));
-  }, [query]);
+    base.filter((item) => item.label.toLowerCase().includes(q)).forEach((item) => hits.add(item.id));
+    return base.filter((item) => hits.has(item.id));
+  }, [query, user]);
 
   useEffect(() => {
-    if (!open || !query.trim() || filteredNav.some((item) => item.id === tab) || !filteredNav[0]) return;
+    if (!open) return;
+    if (!user && !GUEST_TABS.has(tab)) {
+      setTab("appearance");
+      return;
+    }
+    if (!query.trim() || filteredNav.some((item) => item.id === tab) || !filteredNav[0]) return;
     setTab(filteredNav[0].id);
-  }, [open, query, filteredNav, tab, setTab]);
+  }, [open, user, query, filteredNav, tab, setTab]);
 
   useEffect(() => {
     if (!open) return;

@@ -44,6 +44,18 @@ export function AccountMenu() {
         <Link href="/account" className="block rounded-lg px-2.5 py-1.5 text-sm hover:bg-elevated">
           Account
         </Link>
+        <Link href="/library" className="block rounded-lg px-2.5 py-1.5 text-sm hover:bg-elevated">
+          Collection
+        </Link>
+        <Link href="/library/playlists" className="block rounded-lg px-2.5 py-1.5 text-sm hover:bg-elevated">
+          Lists
+        </Link>
+        <Link href="/history" className="block rounded-lg px-2.5 py-1.5 text-sm hover:bg-elevated">
+          Watch History
+        </Link>
+        <Link href="/notifications" className="block rounded-lg px-2.5 py-1.5 text-sm hover:bg-elevated">
+          Updates
+        </Link>
         <button
           type="button"
           onClick={() => openSettings()}

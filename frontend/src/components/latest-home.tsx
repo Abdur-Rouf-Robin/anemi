@@ -2,11 +2,12 @@
 
 import { useState } from "react";
 
+import Link from "next/link";
+
 import type { EpisodeCard } from "@/lib/types";
 import { cn } from "@/lib/utils";
 
 import { LatestReleaseGrid } from "./latest-release-grid";
-import { SectionHead } from "./section-head";
 
 const FILTERS = [
   { id: "ALL", label: "All" },
@@ -23,7 +24,13 @@ export function LatestHome({ items }: { items: EpisodeCard[] }) {
     <section>
       <div className="mb-4 flex flex-wrap items-end justify-between gap-3">
         <div className="min-w-0 flex-1 [&_.mb-4]:mb-0">
-          <SectionHead kicker="Latest" title="Latest releases" href="/latest" hrefLabel="View all" />
+          <div>
+            <h2 className="text-lg font-semibold tracking-tight sm:text-xl">Latest Episodes</h2>
+            <p className="text-sm text-muted">Recently released episodes</p>
+          </div>
+          <Link href="/latest" className="text-xs font-semibold tracking-wide text-muted uppercase hover:text-accent">
+            View all →
+          </Link>
         </div>
         <div className="flex gap-1 pb-0.5">
           {FILTERS.map((item) => (

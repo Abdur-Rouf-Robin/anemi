@@ -11,7 +11,29 @@ import { requestLocale } from "@/lib/request-locale";
 
 const TAKE = 24;
 
-export const metadata: Metadata = { title: "Series" };
+function browseCopy(params: { type?: string; status?: string; sort?: string }) {
+  if (params.type === "MOVIE") return { title: "Movies", blurb: "Films in this catalog" };
+  if (params.type === "SERIES") return { title: "TV Series", blurb: "TV series in this catalog" };
+  if (params.type === "OVA") return { title: "OVAs", blurb: "Original video animations in this catalog." };
+  if (params.type === "ONA") return { title: "ONAs", blurb: "Original net animations in this catalog." };
+  if (params.type === "SPECIAL") return { title: "Specials", blurb: "Specials in this catalog." };
+  if (params.status === "UPCOMING") return { title: "Top Upcoming", blurb: "Titles that have not aired yet." };
+  if (params.status === "AIRING") return { title: "Ongoing", blurb: "Currently publishing." };
+  if (params.status === "COMPLETED") return { title: "Completed", blurb: "Finished titles." };
+  if (params.sort === "score") return { title: "Highest rated", blurb: "Sorted by rating." };
+  if (params.sort === "updated") return { title: "Recently updated", blurb: "Titles updated most recently." };
+  if (params.sort === "newest" || params.sort === "created") return { title: "Newly added", blurb: "Recently added to the catalog." };
+  return { title: "Series", blurb: "Browse our collection of series" };
+}
+
+export async function generateMetadata({
+  searchParams
+}: {
+  searchParams: Promise<{ type?: string; status?: string; sort?: string }>;
+}): Promise<Metadata> {
+  const params = await searchParams;
+  return { title: browseCopy(params).title };
+}
 
 export default async function BrowsePage({
   searchParams
@@ -97,18 +119,7 @@ export default async function BrowsePage({
 
   return (
     <main className="page-shell py-8 pb-16 xl:py-10">
-      <PageHeader
-        title={t(locale, params.type === "MOVIE" ? "Movies" : params.type === "SERIES" ? "TV Series" : "Series")}
-        blurb={t(
-          locale,
-          params.type === "MOVIE"
-            ? "Films in this catalog"
-            : params.type === "SERIES"
-              ? "TV series in this catalog"
-              : "Browse our collection of series"
-        )}
-        uppercase
-      />
+      <PageHeader title={t(locale, browseCopy(params).title)} blurb={t(locale, browseCopy(params).blurb)} />
       <div className="page-rule" />
       <FilterDrawer path="/browse" params={params} genres={genres} studios={studios} />
       <PosterGrid items={catalog.items} />

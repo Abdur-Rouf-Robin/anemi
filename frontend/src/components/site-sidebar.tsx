@@ -1,27 +1,22 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useSearchParams } from "next/navigation";
 import { useEffect } from "react";
 import {
-  Bookmark,
+  BookOpen,
   CalendarDays,
-  ChartNoAxesColumn,
+  CircleHelp,
   Clock,
   Compass,
-  Eye,
-  Film,
-  List,
+  Home,
   Plus,
-  Rss,
+  ScrollText,
   Settings,
-  Shuffle,
-  BookOpen,
-  Text,
-  UserRound
+  Shield,
+  Shuffle
 } from "lucide-react";
 
-import { GenreMenu } from "@/components/genre-menu";
 import { SearchBox } from "@/components/search-box";
 import { useSession } from "@/components/session-provider";
 import { ThemeToggle } from "@/components/theme-toggle";
@@ -32,37 +27,47 @@ import { cn } from "@/lib/utils";
 
 const groups = [
   {
-    label: "",
+    label: "Main",
     items: [
-      { href: "/browse", label: "Browse", icon: BookOpen },
+      { href: "/", label: "Home", icon: Home, exact: true },
+      { href: "/browse", label: "Browse", icon: BookOpen, exact: true },
       { href: "/discover", label: "Discover", icon: Compass },
       { href: "/random", label: "Random", icon: Shuffle },
       { href: "/latest", label: "Latest Episodes", icon: Clock },
-      { href: "/schedule", label: "Schedule", icon: CalendarDays },
-      { href: "/browse?type=MOVIE", label: "Movies", icon: Film },
-      { href: "/charts", label: "Top 10", icon: ChartNoAxesColumn },
-      { href: "/az", label: "A–Z", icon: Text }
+      { href: "/schedule", label: "Schedule", icon: CalendarDays }
     ]
   },
   {
-    label: "Personal",
+    label: "Misc",
     items: [
-      { href: "/account", label: "Profile", icon: UserRound },
-      { href: "/library", label: "Collection", icon: Bookmark },
-      { href: "/library/playlists", label: "Lists", icon: List },
-      { href: "/notifications", label: "Updates", icon: Rss },
-      { href: "/history", label: "Watch History", icon: Eye }
+      { href: "/faq", label: "FAQ", icon: CircleHelp },
+      { href: "/terms", label: "Terms of Service", icon: ScrollText },
+      { href: "/privacy", label: "Privacy Policy", icon: Shield }
     ]
   }
 ];
 
-function navActive(pathname: string, href: string, exact?: boolean) {
-  const path = href.split("#")[0] ?? href;
-  if (path.includes("?")) return false;
-  if (exact) return pathname === path;
+function navMatch(pathname: string, search: string, href: string, exact?: boolean) {
+  const bare = href.split("#")[0] ?? href;
+  const [path, query = ""] = bare.split("?");
   if (path === "/account") return pathname === "/account" || pathname.startsWith("/u/");
-  if (path === "/library") return pathname === "/library";
-  return pathname === path || pathname.startsWith(`${path}/`);
+  if (path === "/library") return pathname === "/library" && !query;
+  if (pathname !== path) return pathname.startsWith(`${path}/`) && !query && !exact;
+  const current = new URLSearchParams(search);
+  const expected = new URLSearchParams(query);
+  if (query) {
+    for (const [key, value] of expected) {
+      if (current.get(key) !== value) return false;
+    }
+    return true;
+  }
+  if (exact && path === "/browse") {
+    return !current.get("type") && !current.get("status") && !current.get("sort");
+  }
+  if (exact && path === "/discover") return !current.get("tab") || current.get("tab") === "popular";
+  if (exact) return true;
+  if (path === "/discover" && current.get("tab") && current.get("tab") !== "popular") return false;
+  return true;
 }
 
 export function SiteSidebar({
@@ -73,6 +78,7 @@ export function SiteSidebar({
   onClose: () => void;
 }) {
   const pathname = usePathname();
+  const search = useSearchParams().toString();
   const { user, access } = useSession();
   const { openSettings } = useSettings();
   const tx = useT();
@@ -132,7 +138,7 @@ export function SiteSidebar({
                 <ul className="space-y-0.5">
                   {group.items.map((item) => {
                     const Icon = item.icon;
-                    const active = navActive(pathname, item.href);
+                    const active = navMatch(pathname, search, item.href, "exact" in item && item.exact);
                     return (
                       <li key={item.href}>
                         <Link
@@ -146,7 +152,6 @@ export function SiteSidebar({
                     );
                   })}
                 </ul>
-                {group.label === "" ? <GenreMenu /> : null}
               </div>
             ))}
             {staff ? (
@@ -166,10 +171,10 @@ export function SiteSidebar({
                 <div className="avatar-mark grid size-9 shrink-0 place-items-center rounded-full text-[10px] font-bold">
                   {initials(user.displayName)}
                 </div>
-                <div className="min-w-0 flex-1">
+                <Link href="/account" className="min-w-0 flex-1">
                   <p className="truncate text-sm font-medium">{truncateName(user.displayName)}</p>
                   <p className="text-[11px] text-[var(--sidebar-muted)]">{staff ? "Staff" : "Registered"}</p>
-                </div>
+                </Link>
                 <ThemeToggle />
                 <button type="button" className="icon-btn" aria-label="Settings" onClick={() => openSettings()}>
                   <Settings className="size-4" />
@@ -180,8 +185,8 @@ export function SiteSidebar({
                 <Link href={canSignup ? "/account?mode=signup" : "/account"} className="flex min-w-0 flex-1 items-center gap-2">
                   <div className="avatar-mark grid size-9 place-items-center rounded-full text-xs font-semibold">A</div>
                   <div className="min-w-0">
-                    <p className="text-sm font-medium">{tx("Sign in")}</p>
-                    <p className="text-[11px] text-[var(--sidebar-muted)]">{tx("Save your list")}</p>
+                    <p className="text-sm font-medium">{tx("Guest")}</p>
+                    <p className="text-[11px] text-[var(--sidebar-muted)]">N/A</p>
                   </div>
                 </Link>
                 <ThemeToggle />

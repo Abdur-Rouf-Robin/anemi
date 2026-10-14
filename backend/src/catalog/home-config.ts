@@ -1,6 +1,6 @@
 export const DEFAULT_HOME_SECTIONS = {
   hero: true,
-  schedule: true,
+  schedule: false,
   featuredFilm: false,
   popular: true,
   latest: true,
@@ -9,7 +9,7 @@ export const DEFAULT_HOME_SECTIONS = {
   watchNext: false,
   continueWatching: true,
   following: false,
-  airingNow: true,
+  airingNow: false,
   newlyAdded: false,
   series: false,
   comingSoon: false,
